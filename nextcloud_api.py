@@ -61,13 +61,19 @@ class Nextcloud_Client:
                     </d:propfind>
         """
 
-        url = helpers.build_url(self.__url_dav, [dir]
-                                )
-        response = requests.request(method="PROPFIND", url=url, headers=headers, auth=self.__auth, data=data)
-        if response.status_code != 207:
-            print(f"listing the dav directory {dir} failed with status {response.status_code}:\n{response.text}")
-            return None
-        
+        url = helpers.build_url(self.__url_dav, [dir])
+
+        # proping the folder 'dir' via http request
+        try:
+            response = requests.request(method="PROPFIND", url=url, headers=headers, auth=self.__auth, data=data)
+            response.raise_for_status()
+        except (
+            requests.exceptions.HTTPError, 
+            requests.exceptions.ConnectionError, 
+            requests.exceptions.Timeout, 
+            requests.exceptions.RetryError) as err:
+            return None, err
+
         # extract file names and information wether its a file or folder from the response and drop the directory which is being listed
         items = self.__extract_displayname(response.text)
         if dir == "/":
@@ -75,13 +81,41 @@ class Nextcloud_Client:
         else:
             items.pop(os.path.basename(dir))
         
-        return items
-
+        return items, None
     
+
+    def exits_folder(self, dir):
+        """
+        returns whether a folder exists in a Nextcloud instance, 'dir' must be the full path to the folder.
+        """
+
+        # proping the folder 'dir' and determining based on the response and its status code if this folder exits or not
+        result, err = self.ls(dir)
+        if err is not None:
+            if isinstance(err, requests.exceptions.HTTPError):
+                if err.response.status_code == 404:
+                    return False, None
+                else:
+                    return False, err
+            else:
+                return False, err
+        return True, None
+
     def request(self, method, dav_path, headers=None, data=None):
         """
         open nextcloud api endpoint for making customized requests to your nextcloud server 
         """
 
         url = helpers.build_url(self.__url_dav, dav_path)
-        return requests.request(method=method, url=url, headers=headers, auth=self.__auth, data=data)
+        
+        try:
+            response = requests.request(method=method, url=url, headers=headers, auth=self.__auth, data=data)
+            response.raise_for_status()
+        except (
+            requests.exceptions.HTTPError, 
+            requests.exceptions.ConnectionError, 
+            requests.exceptions.Timeout, 
+            requests.exceptions.RetryError) as err:
+            return response, err
+        
+        return response, None
