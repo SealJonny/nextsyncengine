@@ -26,7 +26,7 @@ if err is not None:
     else:
         logger.error(err)
 
-exists, err = client.exits_folder("/Photo")
+exists, err = client.exists_folder("/Photo")
 
 if err is not None:
     logger.error(err)

@@ -84,7 +84,7 @@ class Nextcloud_Client:
         return items, None
     
 
-    def exits_folder(self, dir):
+    def exists_folder(self, dir):
         """
         returns whether a folder exists in a Nextcloud instance, 'dir' must be the full path to the folder.
         """
