@@ -6,6 +6,14 @@ class Folder:
         self.items = []
     
     def add_item(self, item, path_parent):
+        """
+        adds a folder in its parent directory
+        """
+        # remove starting folder from path_parent
+        path_parent = path_parent.removeprefix(self.name)
+        return self.__add_item_rec(item, path_parent)
+
+    def __add_item_rec(self, item, path_parent):
         # removes leading '/' if present
         if len(path_parent) > 0 and path_parent[0] == "/":
             path_parent = path_parent[1:len(path_parent)]
@@ -27,7 +35,7 @@ class Folder:
             path_parent = os.path.join(path_parent, name)
         
         # recursive function call for the next subfolder
-        subfolder.add_item(item, path_parent)
+        subfolder.__add_item_rec(item, path_parent)
         return
 
     def remove_item(self, item_name):
@@ -42,20 +50,25 @@ class Folder:
                 return self.items[index]
         return None
             
-    def has_subfolder(self, path):
+    def has_subfolder(self, path_folder):
         """
         returns recursively whether a subfolder exists or not in a folder or its directory tree
         """
+        # remove starting folder from path_parent
+        path_folder = path_folder.removeprefix(self.name)
+        return self.__has_subfolder(path_folder)
+
+    def __has_subfolder(self, path_folder):
         # removes leading '/' if present
-        if len(path) > 0 and path[0] == "/":
-            path = path[1:len(path)]
+        if len(path_folder) > 0 and path_folder[0] == "/":
+            path_folder = path_folder[1:len(path_folder)]
 
         # the path could be fully walked which means the subfolder exists
-        if path == "":
+        if path_folder == "":
             return True
 
         # extract the next subfolder from path
-        folder_names = path.split("/")
+        folder_names = path_folder.split("/")
         subfolder_name = folder_names.pop(0)
         
         # get the next subfolder and if it returns 'None', it means that the path could not be walked fully. Therefore the subfolder does not exist.
@@ -64,19 +77,33 @@ class Folder:
             return False
         
         # reasembles the path without the next subfolder
-        path = ""
+        path_folder = ""
         for item in folder_names:
-            path = os.path.join(path, item)
+            path_folder = os.path.join(path_folder, item)
 
         # recursive function call for the subfolder
-        return subfolder.has_subfolder(path)
+        return subfolder.__has_subfolder(path_folder)
             
-    def to_string(self):
+    def to_string(self, depth=0):
         """
         convertes the folder and its directory tree into a string
         """
-        result = f"- {self.name}\n"
+        result = ""
+        indention = ""
+        for i in range(depth):
+            indention += "\t"
+        result = f"{indention}- {self.name}\n"
+
+        if len(self.items) == 0:
+            return result
+
+        indention += "\t"
         for item in self.items:
-            result += f"\t- {item.name}\n"
+            next_result = item.to_string(depth + 1)
+            if next_result != f"{depth + 1}- item.name":
+                result += next_result
+            else:
+                result += f"{indention}- {item.name}"
+
         return result
 

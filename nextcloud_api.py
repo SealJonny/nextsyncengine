@@ -25,10 +25,17 @@ class Nextcloud_Client:
             headers = {}
         
         url = helpers.build_url(self.__url_dav, [path_dst])
+        try:
+            response = requests.put(url=url, headers=headers, auth=self.__auth, data=open(path_src, 'rb'))
+            response.raise_for_status()
+        except (
+            requests.exceptions.HTTPError, 
+            requests.exceptions.ConnectionError, 
+            requests.exceptions.Timeout, 
+            requests.exceptions.RetryError) as err:
+            return err
+        return None
 
-        response = requests.put(url=url, headers=headers, auth=self.__auth, data=open(path_src, 'rb'))
-        if response.status_code != 201 or response.status_code != 204:
-            print(f"uploading the file {path_src} failed with the status code {response.status_code}:\n{response.text}")
 
     def __extract_displayname(self, xml):
         """extracts the displaynames and whether the item is a file or not and returns it as a dictionary"""
@@ -101,6 +108,19 @@ class Nextcloud_Client:
                 return False, err
         return True, None
 
+    def create_folder(self, dir):
+        url = helpers.build_url(self.__url_dav, [dir])
+        try:
+            response = requests.request(method="MKCOL", url=url, auth=self.__auth)
+            response.raise_for_status()
+        except (
+            requests.exceptions.HTTPError, 
+            requests.exceptions.ConnectionError, 
+            requests.exceptions.Timeout, 
+            requests.exceptions.RetryError) as err:
+            return err
+        return None
+    
     def request(self, method, dav_path, headers=None, data=None):
         """
         open nextcloud api endpoint for making customized requests to your nextcloud server 

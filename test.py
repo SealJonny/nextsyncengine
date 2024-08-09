@@ -17,21 +17,29 @@ password = os.getenv("PASSWORD")
 client = nextcloud_api.Nextcloud_Client(server_url, username, password)
 logger = logging.getLogger(__name__)
 
-result, err = client.ls("/Photo")
+# print(client.create_folder("/Test/hello world"))
+# print(client.upload_file("/home/sealjonny/test.txt", "/Test/hello world/test hallo.txt"))
 
-if err is not None:
-    if isinstance(err, exceptions.HTTPError):
-        if err.response.status_code == 404:
-            logger.warning(err)
-    else:
-        logger.error(err)
 
-exists, err = client.exists_folder("/Photo")
+root = Folder("/")
+root.add_item(Folder("Test1"), "/")
+root.add_item(Folder("Test2"), "/Test1")
+print(root.to_string())
+# result, err = client.ls("/Photos")
+# print(result)
+# if err is not None:
+#     if isinstance(err, exceptions.HTTPError):
+#         if err.response.status_code == 404:
+#             logger.warning(err)
+#     else:
+#         logger.error(err)
 
-if err is not None:
-    logger.error(err)
+# exists, err = client.exists_folder("/Photo")
 
-print(exists)
+# if err is not None:
+#     logger.error(err)
+
+# print(exists)
 
 # print(err.)
 # print(result)
