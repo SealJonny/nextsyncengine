@@ -92,7 +92,7 @@ def upload_folder(files, root, dst):
             missing_folders.appendleft(path_folder)
             folders.pop(0)
 
-    # iters through the missing folders and creates them
+    # iters through missing_folders and creates them
     for dir in missing_folders:
         abs_path = os.path.join(root.name, dir)
 
@@ -100,6 +100,7 @@ def upload_folder(files, root, dst):
         if abs_path[len(abs_path) - 1] == "/":
             abs_path = abs_path[:len(abs_path) - 1]
 
+        # creates the current folder and updated the directory structure
         logger.warning(f"Folder not found, {abs_path} does not exists in this Nextcloud instance")
         client.create_folder(abs_path)
         root.add_item(Folder(os.path.basename(abs_path)), os.path.dirname(abs_path))
