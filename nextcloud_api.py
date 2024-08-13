@@ -3,6 +3,7 @@ import requests.auth
 import os
 import helpers
 from bs4 import BeautifulSoup
+import media
 
 class Nextcloud_Client:
     def __init__(self, url_server, username, password) -> None:
@@ -17,9 +18,12 @@ class Nextcloud_Client:
         """
         # mtime = modified, ctime = creation
         if use_time:
+            ctime, mtime = media.get_datetime(path_src)
             headers = {
-                "X-OC-MTime": f"{int(os.path.getmtime(path_src))}",
-                "X-OC-CTime": f"{int(os.path.getctime(path_src))}"
+                # "X-OC-MTime": f"{int(os.path.getmtime(path_src))}",
+                # "X-OC-CTime": f"{int(os.path.getctime(path_src))}"
+                "X-OC-MTime": f"{mtime}",
+                "X-OC-CTime": f"{ctime}"
             }
         else:
             headers = {}

@@ -17,14 +17,16 @@ password = os.getenv("PASSWORD")
 client = nextcloud_api.Nextcloud_Client(server_url, username, password)
 logger = logging.getLogger(__name__)
 
+client.upload_file("/home/sealjonny/Ivar the boneless.mp4", "/Photos/Ivar the boneless.mp4")
+
 # print(client.create_folder("/Test/hello world"))
 # print(client.upload_file("/home/sealjonny/test.txt", "/Test/hello world/test hallo.txt"))
 
 
-root = Folder("/")
-root.add_item(Folder("Test1"), "/")
-root.add_item(Folder("Test2"), "/Test1")
-print(root.to_string())
+# root = Folder("/")
+# root.add_item(Folder("Test1"), "/")
+# root.add_item(Folder("Test2"), "/Test1")
+# print(root.to_string())
 # result, err = client.ls("/Photos")
 # print(result)
 # if err is not None:

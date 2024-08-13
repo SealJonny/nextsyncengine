@@ -120,10 +120,13 @@ def main():
 
     # files = travel_dir(folder_src)
 
-    files = travel_dir("/home/sealjonny/Dokumente/nextcloud_password_client")
-    root = travel_dir_dav("/Test")
+    dir_dav = "/Test"
+    dir_local = "/home/sealjonny/Downloads/Converted"
+    files = travel_dir(dir_local)
+    root = travel_dir_dav(dir_dav)
+
     print(root.to_string())
-    upload_folder(files, root, "/Test/hello world/1/2/3")
+    upload_folder(files, root, f"{dir_dav}/Photos")
     print(root.to_string())
 
 

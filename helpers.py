@@ -1,22 +1,4 @@
 import datetime
-import re
-from collections import deque
-import os
-
-def get_subdictionary(path, dict):
-    current_path, item = os.path.split(path)
-    splitted_path =  deque()
-    splitted_path.appendleft(item)
-
-    while current_path != "/":
-        current_path, item = os.path.split(current_path)
-        splitted_path.appendleft(item)
-    try:
-        for key in splitted_path:
-            dict = dict[key]
-    except KeyError as err:
-        return None
-    return dict
 
 def exists_folder(folder_path, root):
     folders = folder_path.split("/")
@@ -33,11 +15,8 @@ def exists_folder(folder_path, root):
         
     return True
 
-    
-
-
 def convert_to_unix(date_str):
-    date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    date_obj = datetime.datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
     return int(date_obj.timestamp())
 
 def build_url(base, extensions):
