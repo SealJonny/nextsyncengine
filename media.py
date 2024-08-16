@@ -89,7 +89,4 @@ def get_datetime(media_path):
     for f in SUPPORTED_FORMATS:
         if ext == f:
             return get_datetime_media(media_path)
-    return get_datetime_non_media(media_path)    
-
-print(get_datetime("/home/sealjonny/test.jpg"))
-print(get_datetime("/home/sealjonny/Downloads/Converted/24-07-23 19-55-32 6186.mov"))
+    return get_datetime_non_media(media_path)

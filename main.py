@@ -1,5 +1,4 @@
 import os
-import helpers
 from nextcloud_api import Nextcloud_Client
 from dotenv import load_dotenv
 from collections import deque
@@ -8,8 +7,8 @@ import logging_config
 import logging
 from requests import exceptions
 import media
-import time
 import datetime
+import argparse
 
 
 load_dotenv()
@@ -91,19 +90,31 @@ def get_time_subfolder(dst_root, file):
     # check if the year folder exists and create it if not
     year_path = os.path.join(dst_root.name, year_str)
     if not dst_root.has_subfolder(year_str):
-        client.create_folder(year_path)
+        err = client.create_folder(year_path)
+        if err is not None:
+            logger.error(err)
+            return dst_root.name
+        
         dst_root.add_item(Folder(year_str), dst_root.name)
 
     # check if the month folder exists and create it if not
     month_path = os.path.join(year_path, month_str)
     if not dst_root.has_subfolder(month_path):
-        client.create_folder(month_path)
+        err = client.create_folder(month_path)
+        if err is not None:
+            logger.error(err)
+            return dst_root.name
+        
         dst_root.add_item(Folder(month_str), year_path)
 
     # check if the day folder exists and create it if not
     day_path = os.path.join(month_path, day_str)
     if not dst_root.has_subfolder(day_path):
-        client.create_folder(day_path)
+        err = client.create_folder(day_path)
+        if err is not None:
+            logger.error(err)
+            return dst_root.name
+        
         dst_root.add_item(Folder(day_str), month_path)
 
     return day_path
@@ -122,24 +133,44 @@ def upload_folder(files, root):
         else:
             print(f"successfully upload {file} to nextcloud")
 def main():
-    # folder_src = ""
-    # while os.path.isdir(folder_src) == False:
-    #     folder_src = input("Enter the path of the file you want to upload: ")
-    # folder_dst = input("Enter the location where the file should be saved: ")
+    # add local_path and remote_path as inline options
+    parser = argparse.ArgumentParser(description="Process a path argument")
+    parser.add_argument("--local_path", type=str, required=True, help="The path to your local folder which will be uploaded")
+    parser.add_argument("--remote_path", type=str, required=True, help="The location where on you Nextcloud server the folder will be uploaded")
 
-    # files = travel_dir(folder_src)
+    args = parser.parse_args()
+    
+    local_path = args.local_path
+    remote_path = args.remote_path
 
-    dir_dav = "/Test"
-    if not client.exists_folder("/Test")[0]:
+    # check if there is a folder at local_path
+    if not os.path.isdir(local_path):
+        print(f"The specified local folder {local_path} is not a directory!")
         return
     
-    dir_local = "/home/sealjonny/Downloads/Converted"
-    files = travel_dir(dir_local)
-    root = travel_dir_dav(dir_dav)
+    # check if there is a folder at remote_path
+    exists, err = client.exists_folder(remote_path)
+    if err is not None:
+        logger.error(err)
+        print("Checking if remote folder exists failed! Check process.log for more details.")
+        return
+    
+    # ask user if he wants to create the remote folder if it does not exists
+    if not exists:
+        ans = input(f"The folder {remote_path} does not exists on your Nextcloud instance.\nDo you want to create it?\nYes(y) or No(n) ")
+        if ans.lower().strip() == "y" or ans.lower().strip() == "yes":
+            client.create_folder(remote_path)
+        else:
+            return
+    
+    # create a list of all files which will be uploaded
+    files = travel_dir(local_path)
+    
+    # cache remote folder structure with remote_path as root
+    root = travel_dir_dav(remote_path)
 
-    print(root.to_string())
+    # upload all files to remote_path
     upload_folder(files, root)
-    print(root.to_string())
 
 
 

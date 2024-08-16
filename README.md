@@ -1,7 +1,7 @@
 ## NextSyncEngine
 
 ### How it works
-This application is meant to upload files from a single directory directly to Nextcloud. It will create a folder structure like:
+This CLI tool is meant to upload files from a single directory directly to Nextcloud. It will create a folder structure like:
 
 - root
     - 2024
@@ -42,4 +42,27 @@ Place a '.env' file in the root directory of this application, copy and paste th
 NC_USERNAME=nextcloud_username
 PASSWORD=password_OR_apppassword
 SERVER_URL=https://nextcloud.example.com
+```
+
+### Usage
+#### Python
+Create a Python virtual environment and activate it.
+##### Windows
+```
+.\venv\Scripts\activate
+```
+
+##### Linux
+```
+source venv/bin/activate
+```
+
+Now install the necessary modules with the requirements.txt.
+```
+python3 -m pip install -r requirements.txt
+```
+
+Now you should be able to run the code
+```
+python3 main.py --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder
 ```
