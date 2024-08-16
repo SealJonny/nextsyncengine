@@ -19,9 +19,11 @@ class Nextcloud_Client:
         # mtime = modified, ctime = creation
         if use_time:
             ctime, mtime = media.get_datetime(path_src)
+            if ctime is None or mtime is None:
+                ctime = ""
+                mtime = ""
+
             headers = {
-                # "X-OC-MTime": f"{int(os.path.getmtime(path_src))}",
-                # "X-OC-CTime": f"{int(os.path.getctime(path_src))}"
                 "X-OC-MTime": f"{mtime}",
                 "X-OC-CTime": f"{ctime}"
             }

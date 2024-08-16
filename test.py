@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import logging_config
 import logging
+import media
 
 from requests import exceptions
 
@@ -17,8 +18,10 @@ password = os.getenv("PASSWORD")
 client = nextcloud_api.Nextcloud_Client(server_url, username, password)
 logger = logging.getLogger(__name__)
 
-client.upload_file("/home/sealjonny/Ivar the boneless.mp4", "/Photos/Ivar the boneless.mp4")
+#client.upload_file("/home/sealjonny/Ivar the boneless.mp4", "/Photos/Ivar the boneless.mp4")
 
+
+print(media.get_datetime('/home/sealjonny/Downloads/Converted/Nextcloud community.jpg'))
 # print(client.create_folder("/Test/hello world"))
 # print(client.upload_file("/home/sealjonny/test.txt", "/Test/hello world/test hallo.txt"))
 

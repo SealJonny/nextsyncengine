@@ -7,6 +7,9 @@ from filesystem import Folder
 import logging_config
 import logging
 from requests import exceptions
+import media
+import time
+import datetime
 
 
 load_dotenv()
@@ -67,46 +70,52 @@ def travel_dir_dav(root_dir):
                     root.add_item(Folder(item[0]), current_dir)
     return root
 
-def upload_folder(files, root, dst):
+
+def get_time_subfolder(dst_root, file):
+    """
+    returns based on the timestamp of the file its destination folder and creates them if necessacery
+    """
+    _, mtime_unix = media.get_datetime(file)
+
+    if mtime_unix is None:
+        logger.warning("No timestamps found: File will be uploaded into root directory")
+        return dst_root.name
+    # ctime = time.ctime(ctime)
+    # mtime = time.ctime(mtime)
+
+    mtime = datetime.datetime.fromtimestamp(mtime_unix)
+    year_str = str(mtime.year)
+    month_str = str(mtime.month)
+    day_str = str(mtime.day)
+
+    # check if the year folder exists and create it if not
+    year_path = os.path.join(dst_root.name, year_str)
+    if not dst_root.has_subfolder(year_str):
+        client.create_folder(year_path)
+        dst_root.add_item(Folder(year_str), dst_root.name)
+
+    # check if the month folder exists and create it if not
+    month_path = os.path.join(year_path, month_str)
+    if not dst_root.has_subfolder(month_path):
+        client.create_folder(month_path)
+        dst_root.add_item(Folder(month_str), year_path)
+
+    # check if the day folder exists and create it if not
+    day_path = os.path.join(month_path, day_str)
+    if not dst_root.has_subfolder(day_path):
+        client.create_folder(day_path)
+        dst_root.add_item(Folder(day_str), month_path)
+
+    return day_path
+    
+
+def upload_folder(files, root):
     """
     uploads a local folder to a specified destination on Nextcloud
     """
-    # remove root from path, split it into the single folder names and reverse it
-    non_root_path = dst.removeprefix(root.name)
-    folders = non_root_path.split("/")
-    try:
-        folders.remove("")
-    except ValueError as err:
-        pass
-    folders.reverse()
-
-    missing_folders = deque()
-
-    # iters through the folders and checks if they exits on the Nextcloud instance. If not they will be added to missing_folders
-    while len(folders) != 0:
-        path_folder = ""
-        for folder in folders:
-            path_folder = os.path.join(folder, path_folder)
-
-        if not root.has_subfolder(path_folder):
-            missing_folders.appendleft(path_folder)
-            folders.pop(0)
-
-    # iters through missing_folders and creates them
-    for dir in missing_folders:
-        abs_path = os.path.join(root.name, dir)
-
-        # removing trailing '/' because it messes with the os.path.basename and .dirname functions
-        if abs_path[len(abs_path) - 1] == "/":
-            abs_path = abs_path[:len(abs_path) - 1]
-
-        # creates the current folder and updated the directory structure
-        logger.warning(f"Folder not found, {abs_path} does not exists in this Nextcloud instance")
-        client.create_folder(abs_path)
-        root.add_item(Folder(os.path.basename(abs_path)), os.path.dirname(abs_path))
-
-    # uploading the files to their destination
     for file in files:
+        # get the destination of the file and upload it
+        dst = get_time_subfolder(root, file)
         err = client.upload_file(file, os.path.join(dst, os.path.basename(file)))
         if err is not None:
             logger.error(err)
@@ -121,12 +130,15 @@ def main():
     # files = travel_dir(folder_src)
 
     dir_dav = "/Test"
+    if not client.exists_folder("/Test")[0]:
+        return
+    
     dir_local = "/home/sealjonny/Downloads/Converted"
     files = travel_dir(dir_local)
     root = travel_dir_dav(dir_dav)
 
     print(root.to_string())
-    upload_folder(files, root, f"{dir_dav}/Photos")
+    upload_folder(files, root)
     print(root.to_string())
 
 
