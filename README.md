@@ -34,4 +34,4 @@ or build on an existing one.
 The folder structure will be cached to minimize the request to your Nextcloud which improves the speed and prevents overloading the server. 
 **Please, do NOT change or delete the root folder and its content while the application is running!**
 
-Any erros or warning which might occure during the execution, will be logged and can be viewed in 'process.log'.
+Any erros or warnings which might occure during the execution, will be logged and can be viewed in 'process.log'.
