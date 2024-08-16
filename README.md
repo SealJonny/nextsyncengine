@@ -3,9 +3,9 @@
 ### How it works
 This application is meant to upload files from a single directory directly to Nextcloud. It will create a folder structure like:
 
--root
-    -2024
-        -1
+- root
+    - 2024
+        - 1
             -1
             -2
             -3
