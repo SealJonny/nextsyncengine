@@ -37,7 +37,7 @@ The folder structure will be cached to minimize the request to your Nextcloud wh
 Any erros or warnings which might occure during the execution, will be logged and can be viewed in 'process.log'.
 
 ### Credentials
-Place a '.env' file in the root directory of this application, copy and paste this code and replace it with your url and credentials (it is possible to use and Nextcloud App Password instead of your password).
+Place a '.env' file in the root directory of this application, copy and paste this code and replace it with your url and credentials (it is possible to use a Nextcloud App Password instead of your password).
 ```
 NC_USERNAME=nextcloud_username
 PASSWORD=password_OR_apppassword
