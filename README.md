@@ -66,3 +66,15 @@ Now you should be able to run the code
 ```
 python3 main.py --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder
 ```
+
+#### Binary
+Place the binary in the location of your choice and create in the same folder a folder with the name _nextsyncengine_
+```
+cd path/to/binary
+mkdir _nextsyncengine_
+```
+
+If you added the folder where the binary lies to PATH, you can use the CLI like this (you need sudo rights if the folder _nextsyncengine_ is owned by root)
+```
+sudo nextsyncengine --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder
+```

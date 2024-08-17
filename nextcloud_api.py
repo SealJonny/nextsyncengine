@@ -9,6 +9,8 @@ class Nextcloud_Client:
     def __init__(self, url_server, username, password) -> None:
         self.__url_dav = helpers.build_url(url_server, ["remote.php/dav/files", username])
         self.__auth = requests.auth.HTTPBasicAuth(username, password)
+        self.session = requests.Session()
+        self.session.auth = self.__auth
 
     def upload_file(self, path_src, path_dst, use_time=True):
         """
@@ -32,13 +34,10 @@ class Nextcloud_Client:
         
         url = helpers.build_url(self.__url_dav, [path_dst])
         try:
-            response = requests.put(url=url, headers=headers, auth=self.__auth, data=open(path_src, 'rb'))
-            response.raise_for_status()
-        except (
-            requests.exceptions.HTTPError, 
-            requests.exceptions.ConnectionError, 
-            requests.exceptions.Timeout, 
-            requests.exceptions.RetryError) as err:
+            with open(path_src, 'rb') as file:
+                response = self.session.put(url=url, headers=headers, data=file)
+                response.raise_for_status()
+        except (requests.RequestException, FileNotFoundError) as err:
             return err
         return None
 
@@ -78,13 +77,9 @@ class Nextcloud_Client:
 
         # proping the folder 'dir' via http request
         try:
-            response = requests.request(method="PROPFIND", url=url, headers=headers, auth=self.__auth, data=data)
+            response = self.session.request(method="PROPFIND", url=url, headers=headers, data=data)
             response.raise_for_status()
-        except (
-            requests.exceptions.HTTPError, 
-            requests.exceptions.ConnectionError, 
-            requests.exceptions.Timeout, 
-            requests.exceptions.RetryError) as err:
+        except requests.RequestException as err:
             return None, err
 
         # extract file names and information wether its a file or folder from the response and drop the directory which is being listed
@@ -117,13 +112,9 @@ class Nextcloud_Client:
     def create_folder(self, dir):
         url = helpers.build_url(self.__url_dav, [dir])
         try:
-            response = requests.request(method="MKCOL", url=url, auth=self.__auth)
+            response = self.session.request(method="MKCOL", url=url)
             response.raise_for_status()
-        except (
-            requests.exceptions.HTTPError, 
-            requests.exceptions.ConnectionError, 
-            requests.exceptions.Timeout, 
-            requests.exceptions.RetryError) as err:
+        except requests.RequestException as err:
             return err
         return None
     
@@ -135,13 +126,9 @@ class Nextcloud_Client:
         url = helpers.build_url(self.__url_dav, dav_path)
         
         try:
-            response = requests.request(method=method, url=url, headers=headers, auth=self.__auth, data=data)
+            response = self.session.request(method=method, url=url, headers=headers, data=data)
             response.raise_for_status()
-        except (
-            requests.exceptions.HTTPError, 
-            requests.exceptions.ConnectionError, 
-            requests.exceptions.Timeout, 
-            requests.exceptions.RetryError) as err:
+        except requests.RequestException as err:
             return response, err
         
         return response, None

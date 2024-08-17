@@ -9,9 +9,18 @@ from requests import exceptions
 import media
 import datetime
 import argparse
+import sys
 
 
-load_dotenv()
+# check if it is executed as a binary or script and set paths accordingly
+if hasattr(sys, 'frozen'):
+    binary_path = os.path.dirname(sys.executable)
+    load_dotenv(os.path.join(binary_path, "_nextsyncengine_", ".env"))
+    logging_config.configure_logger(binary_path)
+else:
+    load_dotenv()
+    logging_config.configure_logger("")
+
 server_url = os.getenv("SERVER_URL")
 username = os.getenv("NC_USERNAME")
 password = os.getenv("PASSWORD")
