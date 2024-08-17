@@ -42,6 +42,7 @@ Place a '.env' file in the root directory of this application, copy and paste th
 NC_USERNAME=nextcloud_username
 PASSWORD=password_OR_apppassword
 SERVER_URL=https://nextcloud.example.com
+EXIFTOOL=/path/to/exiftool/binary
 ```
 
 ### Usage

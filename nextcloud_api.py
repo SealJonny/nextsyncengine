@@ -3,16 +3,36 @@ import requests.auth
 import os
 import helpers
 from bs4 import BeautifulSoup
-import media
 
 class Nextcloud_Client:
     def __init__(self, url_server, username, password) -> None:
+        self.__base_url = url_server
         self.__url_dav = helpers.build_url(url_server, ["remote.php/dav/files", username])
         self.__auth = requests.auth.HTTPBasicAuth(username, password)
         self.session = requests.Session()
         self.session.auth = self.__auth
+    
+    def is_online(self):
+        """
+        returns False if server is in maintenance mode
+        """
+        response = self.session.get(url=self.__base_url)
+        if response.status_code != 503 and response.status_code != 500:
+            return True, None
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # find 'h2' and check its content to determine if maintenance mode is enabled or not
+        maintenance_header = soup.find('h2')
+        if maintenance_header:
+            if maintenance_header.text.strip() == "Maintenance mode":
+                return False, None
 
-    def upload_file(self, path_src, path_dst, use_time=True):
+        try: 
+            response.raise_for_status()
+        except requests.RequestException as err:
+            return False, err
+
+    def upload_file(self, path_src, path_dst, ctime="", mtime="", use_time=True):
         """
         uploads a file to the specified location
         (use_time = True => transfers local unix timestamp to the uploaded file
@@ -20,14 +40,9 @@ class Nextcloud_Client:
         """
         # mtime = modified, ctime = creation
         if use_time:
-            ctime, mtime = media.get_datetime(path_src)
-            if ctime is None or mtime is None:
-                ctime = ""
-                mtime = ""
-
             headers = {
-                "X-OC-MTime": f"{mtime}",
-                "X-OC-CTime": f"{ctime}"
+                "X-OC-MTime": mtime,
+                "X-OC-CTime": ctime
             }
         else:
             headers = {}

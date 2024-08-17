@@ -6,10 +6,11 @@ from filesystem import Folder
 import logging_config
 import logging
 from requests import exceptions
-import media
+from media import Extract
 import datetime
 import argparse
 import sys
+import helpers
 
 
 # check if it is executed as a binary or script and set paths accordingly
@@ -24,8 +25,11 @@ else:
 server_url = os.getenv("SERVER_URL")
 username = os.getenv("NC_USERNAME")
 password = os.getenv("PASSWORD")
+exiftool = os.getenv("EXIFTOOL")
+
 
 client = Nextcloud_Client(server_url, username, password)
+extractor = Extract()
 logger = logging.getLogger(__name__)
 
 def travel_dir(root_dir):
@@ -79,22 +83,27 @@ def travel_dir_dav(root_dir):
     return root
 
 
-def get_time_subfolder(dst_root, file):
+def get_time_folder(dst_root, file, depth):
     """
-    returns based on the timestamp of the file its destination folder and creates them if necessacery
+    returns the ctime and mtime timestamps and based on the mtime it returns the destination of the file (and creates the destination folder if necessesary)
     """
-    _, mtime_unix = media.get_datetime(file)
+    ctime_unix, mtime_unix = extractor.get_datetime(file)
 
     if mtime_unix is None:
         logger.warning("No timestamps found: File will be uploaded into root directory")
-        return dst_root.name
-    # ctime = time.ctime(ctime)
-    # mtime = time.ctime(mtime)
+        return dst_root.name, None, None
 
     mtime = datetime.datetime.fromtimestamp(mtime_unix)
     year_str = str(mtime.year)
-    month_str = str(mtime.month)
-    day_str = str(mtime.day)
+    if mtime.month < 10:
+        month_str = f"0{mtime.month}"
+    else:
+        month_str = str(mtime.month)
+
+    if mtime.day < 10:
+        day_str = f"0{mtime.day}"
+    else:
+        day_str = str(mtime.day)
 
     # check if the year folder exists and create it if not
     year_path = os.path.join(dst_root.name, year_str)
@@ -102,9 +111,12 @@ def get_time_subfolder(dst_root, file):
         err = client.create_folder(year_path)
         if err is not None:
             logger.error(err)
-            return dst_root.name
+            return dst_root.name, ctime_unix, mtime_unix
         
         dst_root.add_item(Folder(year_str), dst_root.name)
+    
+    if depth == "year":
+        return year_path, ctime_unix, mtime_unix
 
     # check if the month folder exists and create it if not
     month_path = os.path.join(year_path, month_str)
@@ -112,9 +124,12 @@ def get_time_subfolder(dst_root, file):
         err = client.create_folder(month_path)
         if err is not None:
             logger.error(err)
-            return dst_root.name
+            return dst_root.name, ctime_unix, mtime_unix
         
         dst_root.add_item(Folder(month_str), year_path)
+    
+    if depth == "month":
+        return month_path, ctime_unix, mtime_unix
 
     # check if the day folder exists and create it if not
     day_path = os.path.join(month_path, day_str)
@@ -122,36 +137,100 @@ def get_time_subfolder(dst_root, file):
         err = client.create_folder(day_path)
         if err is not None:
             logger.error(err)
-            return dst_root.name
+            return dst_root.name, ctime_unix, mtime_unix
         
         dst_root.add_item(Folder(day_str), month_path)
 
-    return day_path
+    return day_path, ctime_unix, mtime_unix
     
 
-def upload_folder(files, root):
+def upload_folder(files, root, depth):
     """
     uploads a local folder to a specified destination on Nextcloud
     """
+    sum_size = helpers.get_size_sum_files(files)
+    uploaded_size = 0
+    rounded_total_size = 0
+    unit = ""
+    if sum_size > 1000000000:
+        rounded_total_size = round(sum_size / 1000000000, 2)
+        unit = "G"
+    else:
+        rounded_total_size = round(sum_size / 1000000, 2)
+        unit = "M"
+
+    suffix = f"{uploaded_size}{unit}/{rounded_total_size}{unit}"
+    helpers.progress_bar(iteration=0, total=sum_size, prefix="Uploading", suffix=suffix)
+
     for file in files:
         # get the destination of the file and upload it
-        dst = get_time_subfolder(root, file)
-        err = client.upload_file(file, os.path.join(dst, os.path.basename(file)))
+        uploaded_size += helpers.get_file_size(file)
+        dst, ctime, mtime = get_time_folder(root, file, depth)
+        if ctime is None or mtime is None:
+            ctime = ""
+            mtime = ""
+
+        err = client.upload_file(path_src=file, path_dst=os.path.join(dst, os.path.basename(file)), ctime=f"{ctime}", mtime=f"{mtime}")
         if err is not None:
             logger.error(err)
         else:
-            print(f"successfully upload {file} to nextcloud")
+            rounded_uploaded_size = 0
+            if sum_size > 1000000000:
+                rounded_uploaded_size = round(uploaded_size / 1000000000, 2)
+            else:
+                rounded_uploaded_size = round(uploaded_size / 1000000, 2)
+
+            suffix = f"{rounded_uploaded_size}{unit}/{rounded_total_size}{unit}"
+            helpers.progress_bar(iteration=uploaded_size, total=sum_size, prefix="Uploading", suffix=suffix)
+
 def main():
+    # check if all necessary values exist in the .env file and terminate execution if not
+    if username is None:
+        logger.error(NameError("No environment variable with the name 'NC_USERNAME' found!"))
+        print("Check the environment variable 'NC_USERNAME'!")
+        return
+    
+    if password is None:
+        logger.error(NameError("No environment variable with the name 'PASSWORD' found!"))
+        print("Check the environment variable 'PASSWORD'!")
+        return
+
+    if server_url is None:
+        logger.error(NameError("No environment variable with the name 'SERVER_URL' found!"))
+        print("Check the environment variable 'SERVER_URL'!")
+        return
+    
+    if exiftool is None:
+        logger.error(NameError("No environment variable with the name 'EXIFTOOL' found!"))
+        print("Exiftool could not be located!")
+        return
+
+    print("Checking if Nextcloud server is online ...")
+    is_online, err = client.is_online()
+    if err:
+        logger.error(err)
+
+    if not is_online:
+        print("The Nextcloud server is in maintenance mode. Please, try again later!")
+        return
+    print("done")
+    
     # add local_path and remote_path as inline options
     parser = argparse.ArgumentParser(description="Process a path argument")
     parser.add_argument("--local_path", type=str, required=True, help="The path to your local folder which will be uploaded")
     parser.add_argument("--remote_path", type=str, required=True, help="The location where on you Nextcloud server the folder will be uploaded")
-
+    parser.add_argument("--depth", type=str, required=False, default="month", help="Options are: year, month and day. Determines the depth of the folder structure.")
     args = parser.parse_args()
     
-    local_path = args.local_path
-    remote_path = args.remote_path
+    local_path = args.local_path.strip()
+    remote_path = args.remote_path.strip()
+    depth = args.depth.strip().lower()
 
+    # check if depth was specified correct
+    if depth != "year" and depth != "month" and depth != "day":
+        print(f"incorrect value {depth} for option --depth!")
+        return
+    
     # check if there is a folder at local_path
     if not os.path.isdir(local_path):
         print(f"The specified local folder {local_path} is not a directory!")
@@ -166,7 +245,7 @@ def main():
     
     # ask user if he wants to create the remote folder if it does not exists
     if not exists:
-        ans = input(f"The folder {remote_path} does not exists on your Nextcloud instance.\nDo you want to create it?\nYes(y) or No(n) ")
+        ans = input(f"The folder {remote_path} does not exist on your Nextcloud instance.\nDo you want to create it?\nYes(y) or No(n) ")
         if ans.lower().strip() == "y" or ans.lower().strip() == "yes":
             client.create_folder(remote_path)
         else:
@@ -178,8 +257,15 @@ def main():
     # cache remote folder structure with remote_path as root
     root = travel_dir_dav(remote_path)
 
+    # set exiftool path and terminate execution if there is no file at 'exiftool'
+    err = extractor.set_exiftool(exiftool)
+    if err:
+        logger.error(err)
+        print("Exiftool could not be located!")
+        return
+
     # upload all files to remote_path
-    upload_folder(files, root)
+    upload_folder(files, root, depth)
 
 
 
