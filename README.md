@@ -1,81 +1,107 @@
-## NextSyncEngine
+# 🚀 NextSyncEngine
 
-### How it works
-This CLI tool is meant to upload files from a single directory directly to Nextcloud. It will create a folder structure like:
+### 📖 Overview
 
-- root
-    - 2024
-        - 1
-            - 1
-            - 2
-            - 3
-            - ...
-        - 2
-            - 1
-            - 2
-            - 3
-            - ...
-        - ...
-    - 2023
-        - 1
-            - 1
-            - 2
-            - 3
-            - ...
-        - 2
-            - 1
-            - 2
-            - 3
-            - ...
-        - ...
+NextSyncEngine is a powerful CLI tool designed to streamline file uploads from a local directory directly to your Nextcloud instance. The tool automatically organizes files into a structured folder hierarchy, such as:
+
+- **root**
+  - **2024**
+    - **01**
+      - 01
+      - 02
+      - 02
+      - ...
+    - **02**
+      - 01
+      - 02
+      - 03
+      - ...
     - ...
+  - **2023**
+    - **01**
+      - 01
+      - 02
+      - 03
+      - ...
+    - **02**
+      - 01
+      - 02
+      - 03
+      - ...
+    - ...
+  - ...
 
-or build on an existing one.
-The folder structure will be cached to minimize the request to your Nextcloud which improves the speed and prevents overloading the server. 
-**Please, do NOT change or delete the root folder and its content while the application is running!**
+🕒 Caching: The folder structure is cached to improve performance. 
 
-Any erros or warnings which might occure during the execution, will be logged and can be viewed in 'process.log'.
+⚠️ **Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
 
-### Credentials
-Place a '.env' file in the root directory of this application, copy and paste this code and replace it with your url and credentials (it is possible to use a Nextcloud App Password instead of your password).
-```
-NC_USERNAME=nextcloud_username
-PASSWORD=password_OR_apppassword
+
+### 🔐 Credentials & Settings
+The credential and settings  are stored in a `.env` file. Replace the placeholders with your values.
+
+```plaintext
+NC_USERNAME=your_nextcloud_username
+PASSWORD=your_password_or_apppassword
 SERVER_URL=https://nextcloud.example.com
 EXIFTOOL=/path/to/exiftool/binary
 ```
 
-### Usage
-#### Python
-Create a Python virtual environment and activate it.
-##### Windows
+### 🔧 Installation
+#### 🛠️ Binary
+Place the binary `nextsyncengine`in your desired location.
+Create a folder named `_nextsyncengine_` in the same directory and place your `.env` file in `_nextsyncengine_`:
+```bash
+cd path/to/binary
+mkdir _nextsyncengine_
+cd _nextsyncengine_
+mv /path/to/.env .
 ```
+
+#### 🐍 Python
+If you prefer running the source code, follow these steps:
+
+First, create and activate a Python virtual environment.
+##### 💻 Windows
+Code kopieren
+ ```
 .\venv\Scripts\activate
 ```
 
-##### Linux
+##### 🐧 Linux
 ```
 source venv/bin/activate
 ```
 
-Now install the necessary modules with the requirements.txt.
-```
+Next, install the required Python packages using requirements.txt:
+```bash
 python3 -m pip install -r requirements.txt
 ```
 
-Now you should be able to run the code
-```
-python3 main.py --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder
-```
-
-#### Binary
-Place the binary in the location of your choice and create in the same folder a folder with the name _nextsyncengine_
-```
-cd path/to/binary
-mkdir _nextsyncengine_
+Place the .env file into the the root folder of this application:
+```bash
+cd /path/to/root/folder
+mv /path/to/.env .
 ```
 
-If you added the folder where the binary lies to PATH, you can use the CLI like this (you need sudo rights if the folder _nextsyncengine_ is owned by root)
+
+### ⚙️ Usage
+#### 🛠️ Binary
+If you’ve added the binary’s location to your PATH, you can use the CLI like this (you may need to execute with sudo rights if `_nextsyncengine_` and its content is owned by root):
+```bash
+nextsyncengine --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder --depth <Options: year, month(default), day>
 ```
-sudo nextsyncengine --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder
+
+#### 🐍 Python
+```bash
+python3 main.py --local_path /path/to/your/local/folder --remote_path /path/to/your/remote/folder --depth <Options: year, month(default), day>
 ```
+
+
+### 📜 Logs
+In case of a failure, check `process.log` for any errors or warnings that occured during execution.
+
+#### 🛠️ Binary
+Path: `/path/to/_nextsyncengine_/process.log`
+
+#### 🐍 Python
+Path: `/path/to/application/process.log`
