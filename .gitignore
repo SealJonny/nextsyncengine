@@ -1,4 +1,1 @@
-.env
-process.log
-ToDo.md
-build
+/target
