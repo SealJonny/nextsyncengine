@@ -2,7 +2,7 @@ import os
 from nextcloud_api import Nextcloud_Client
 from dotenv import load_dotenv
 from collections import deque
-from filesystem import Folder
+from filesystem import Folder, File
 import logging_config
 import logging
 from requests import exceptions
@@ -144,44 +144,46 @@ def get_time_folder(dst_root, file, depth):
     return day_path, ctime_unix, mtime_unix
     
 
-def upload_folder(files, root, depth):
+def upload_folder(local_paths, root, depth):
     """
     uploads a local folder to a specified destination on Nextcloud
     """
-    sum_size = helpers.get_size_sum_files(files)
+    sum_size = helpers.get_size_sum_files(local_paths)
     uploaded_size = 0
     rounded_total_size = 0
     unit = ""
-    if sum_size > 1000000000:
-        rounded_total_size = round(sum_size / 1000000000, 2)
+
+    GB = 1000000000
+    MB = 1000000 
+    if sum_size > GB:
+        rounded_total_size = round(sum_size / GB, 2)
         unit = "G"
     else:
-        rounded_total_size = round(sum_size / 1000000, 2)
+        rounded_total_size = round(sum_size / MB, 2)
         unit = "M"
 
-    suffix = f"{uploaded_size}{unit}/{rounded_total_size}{unit}"
-    helpers.progress_bar(iteration=0, total=sum_size, prefix="Uploading", suffix=suffix)
+    helpers.update_progress_bar(0, sum_size, unit, rounded_total_size)
+    
+    for index in range(len(local_paths)):
+        local_path = local_paths[index]
 
-    for file in files:
         # get the destination of the file and upload it
-        uploaded_size += helpers.get_file_size(file)
-        dst, ctime, mtime = get_time_folder(root, file, depth)
-        if ctime is None or mtime is None:
-            ctime = ""
-            mtime = ""
+        file_size = helpers.get_file_size(local_path)
+        remote_parent, ctime, mtime = get_time_folder(root, local_path, depth)
 
-        err = client.upload_file(path_src=file, path_dst=os.path.join(dst, os.path.basename(file)), ctime=f"{ctime}", mtime=f"{mtime}")
+        file = File(local_path=local_path, remote_parent=remote_parent, ctime=ctime, mtime=mtime, size=file_size)
+
+        last_upload = False
+        if len(local_paths) - index == 1:
+            last_upload = True
+
+        err = client.upload_file(file, last_upload)
         if err is not None:
             logger.error(err)
-        else:
-            rounded_uploaded_size = 0
-            if sum_size > 1000000000:
-                rounded_uploaded_size = round(uploaded_size / 1000000000, 2)
-            else:
-                rounded_uploaded_size = round(uploaded_size / 1000000, 2)
-
-            suffix = f"{rounded_uploaded_size}{unit}/{rounded_total_size}{unit}"
-            helpers.progress_bar(iteration=uploaded_size, total=sum_size, prefix="Uploading", suffix=suffix)
+            continue
+        
+        uploaded_size += file_size
+        helpers.update_progress_bar(uploaded_size, sum_size, unit, rounded_total_size)
 
 def main():
     # check if all necessary values exist in the .env file and terminate execution if not
@@ -223,7 +225,7 @@ def main():
     args = parser.parse_args()
     
     local_path = args.local_path.strip()
-    remote_path = args.remote_path.strip()
+    remote_path = args.remote_path.strip().rstrip("/")
     depth = args.depth.strip().lower()
 
     # check if depth was specified correct
@@ -252,7 +254,7 @@ def main():
             return
     
     # create a list of all files which will be uploaded
-    files = travel_dir(local_path)
+    local_paths = travel_dir(local_path)
     
     # cache remote folder structure with remote_path as root
     root = travel_dir_dav(remote_path)
@@ -265,7 +267,7 @@ def main():
         return
 
     # upload all files to remote_path
-    upload_folder(files, root, depth)
+    upload_folder(local_paths, root, depth)
 
 
 

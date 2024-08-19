@@ -18,6 +18,16 @@ def progress_bar(iteration, total, length=50, prefix='', suffix='', fill='█'):
     if iteration == total: 
         sys.stdout.write('\n')
 
+def update_progress_bar(uploaded_size, total_size, unit, rounded_total_size):
+    rounded_uploaded_size = 0
+    if total_size > 1000000000:
+        rounded_uploaded_size = round(uploaded_size / 1000000000, 2)
+    else:
+        rounded_uploaded_size = round(uploaded_size / 1000000, 2)
+        
+    suffix = f"{rounded_uploaded_size}{unit}/{rounded_total_size}{unit}"
+    progress_bar(iteration=uploaded_size, total=total_size, prefix="Uploading", suffix=suffix)
+
 def get_size_sum_files(files):
     """
     returns the total sum of the file sizes

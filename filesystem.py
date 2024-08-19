@@ -106,4 +106,12 @@ class Folder:
                 result += f"{indention}- {item.name}"
 
         return result
+    
+class File:
+    def __init__(self, local_path, remote_parent, ctime, mtime, size) -> None:
+        self.local_path = local_path
+        self.remote_parent = remote_parent
+        self.ctime = ctime
+        self.mtime = mtime
+        self.size = size
 
