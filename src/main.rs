@@ -35,7 +35,7 @@ fn main() {
     
     let image = Path::new("/home/sealjonny/Github/nextsyncengine/Vineyard.jpg");
 
-    let ext = Extractor::new("/usr/local/bin/exiftool-amd64-glibc");
+    let ext = Extractor::new("/usr/local/bin/exiftool-amd64-glibc".to_string());
 
     let mut mtime: i64 = 0;
     if let Err(e) = ext.extract_date_time(image).map(|val| mtime = val) {
