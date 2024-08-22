@@ -79,10 +79,8 @@ impl<'a> Extractor<'a> {
 
         // converting the extracted date time string into a unix timestamp
         let format = "%Y:%m:%d %H:%M:%S";
-        match NaiveDateTime::parse_from_str(&result, format) {
-            Ok(val) => Ok(val.and_utc().timestamp()),
-            Err(e) => Err(Box::new(e))
-        }
+        let unix_mtime = NaiveDateTime::parse_from_str(&result, format)?;
+        Ok(unix_mtime.and_utc().timestamp())
     }
 
 }
