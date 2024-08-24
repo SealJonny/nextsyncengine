@@ -3,7 +3,7 @@ use std::{fs::File, vec};
 use std::io::Read;
 use std::error::Error;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use xml::reader::{EventReader, XmlEvent};
 
@@ -77,7 +77,7 @@ impl NextcloudClient {
     }
     
     // lists a folder
-    pub fn ls(&self, path: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    pub fn ls(&self, path: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
         // Todo: Optimize the error handling!
         
         let prop = r#"<?xml version='1.0'?> 
@@ -107,10 +107,10 @@ impl NextcloudClient {
             Err(Box::new(e))
         } else {
             let response = response.text()?;
-            let folders = self.extract_folder_xml(&response)?;
+            let mut folders = self.extract_folder_xml(&response)?;
+            folders.remove(0);
             Ok(folders)
         }
-        
         
     }
 
@@ -195,11 +195,11 @@ impl NextcloudClient {
     }
 
     // extracts the folder from xml data
-    fn extract_folder_xml(&self, xml_data: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    fn extract_folder_xml(&self, xml_data: &str) -> Result<Vec<PathBuf>, Box<dyn Error>> {
         let parser = EventReader::from_str(xml_data);
         let mut inside_displayname = false;
         let mut current_displayname: Option<String> = None;
-        let mut folders: Vec<String> = Vec::new();
+        let mut folders: Vec<PathBuf> = Vec::new();
 
         // loop through the xml tags
         for e in parser {
@@ -215,7 +215,7 @@ impl NextcloudClient {
 
                     } else if name.local_name == "collection" {
                         if current_displayname.is_some() {
-                            folders.push(current_displayname.unwrap());
+                            folders.push(Path::new(current_displayname.unwrap().as_str()).to_path_buf());
                             current_displayname = None;
                         }
                     }
