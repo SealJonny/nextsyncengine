@@ -1,6 +1,8 @@
 mod nextcloud;
 mod media;
+mod filesystem;
 
+use filesystem::{File, Folder};
 use nextcloud::NextcloudClient;
 use std::env;
 use std::path::Path;
@@ -44,15 +46,46 @@ fn main() {
         return
     }
 
+    let mut file = File::new(image, Path::new("/TestHallo"));
+    file.set_mtime(mtime);
     println!("{}", mtime);
 
-    match client.upload_file(image, mtime) {
+    match client.is_online() {
+        Ok(val) => println!("Is Client Online: {}", val),
+        Err(e) => println!("Error while checking if server is online! {}", e)
+    }
+    
+    match client.create_folder(Path::new("/TestHallo")) {
+        Ok(_val) => print!("Successfully created demo folder"),
+        Err(e) => {
+            eprintln!("Error while creating folder: {}", e)
+        }
+    }
+    match client.upload_file(file) {
         Ok(_val) => println!("Successfully uploaded demo!"),
         Err(e) => eprintln!("Error while uploading demo: {}", e)
     }
 
-    match client.create_folder(Path::new("/TestHallo")) {
-        Ok(_val) => print!("Successfully created demo folder"),
-        Err(e) => eprintln!("Error while creating folder: {}", e)
+    match client.ls(Path::new("/Talk")) {
+        Ok( val) =>  {
+            for s in val {
+                println!("{}", s)
+            }
+        }
+        Err(e) => eprintln!("Error while listing Folder: {}", e)
     }
+
+    let mut f = Folder::new("/Test".to_string());
+    println!("{}", f.convert_to_string(0));
+    f.add_sub_folder(Folder::new("Photos".to_string()), Path::new("/Test"));
+    f.add_sub_folder(Folder::new("Test1".to_string()), Path::new("/Test/Photos"));
+    f.add_sub_folder(Folder::new("Mara".to_string()), Path::new("/Test"));
+    f.add_sub_folder(Folder::new("Liebe".to_string()), Path::new("/Test/Mara"));
+    f.add_sub_folder(Folder::new("dich".to_string()), Path::new("/Test/Mara/Liebe"));
+    println!("{}", f.convert_to_string(0));
+
+    match client.exists_folder(Path::new("/TestHallo")) {
+        Ok(val) => println!("{}", val),
+        Err(e) => eprintln!("{}", e)
+    }   
 }
