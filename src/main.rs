@@ -33,6 +33,7 @@ fn init_logger(config_folder: &Path) {
         .unwrap();
 }
 
+// returns the path to the parent folder on Nextcloud based on the mtime of the file
 fn get_remote_parent(root: &mut Folder, client: &NextcloudClient, mtime: i64, depth: &str) -> Result<PathBuf, Box<dyn Error>> {
     if let LocalResult::Single(mtime) = Local.timestamp_opt(mtime, 0) {
         let day: String;
@@ -170,7 +171,7 @@ fn main() {
     let password = get_env_var("PASSWORD");
     let exiftool = get_env_var("EXIFTOOL");
 
-    let client = NextcloudClient::new(server_url, username, password);
+    let client = NextcloudClient::new(server_url, username.clone(), password);
     let extractor = Extractor::new(exiftool);
 
     let matches = Command::new("nextsyncengine")
@@ -204,11 +205,11 @@ fn main() {
     let default_depth = &"month".to_string();
     let depth = matches.get_one::<String>("depth").unwrap_or(default_depth);
     
-    println!("Checking if Nextcloud server is online ...");
+    print!("Checking if Nextcloud server is online ... ");
     match client.is_online() {
         Ok(val) => {
             if !val {
-                println!("Nextcloud Server is offline or in maintenance mode");
+                println!("\nNextcloud server is offline or in maintenance mode!");
                 return
             }
             println!("done")
@@ -219,21 +220,29 @@ fn main() {
         }
     }
 
+    println!("You are logged in as {}.", &username);
+
     match client.exists_folder(Path::new(&remote_path)) {
         Ok(val) => {
             if !val {
-                if let Err(e) = client.create_folder(Path::new(&remote_path)) {
-                    error!("{}", e);
+                print!("The folder {} does not exist on your Nextcloud instance.\nWould you like to create it?\nYes(y) or No(n) ", &remote_path);
+                let mut answer = String::new();
+                let _ = io::stdin().read_line(&mut answer);
+                if answer.trim().to_lowercase() == "y" || answer.trim().to_lowercase() == "yes" {
+                    if let Err(e) = client.create_folder(Path::new(&remote_path)) {
+                        error!("{}", e);
+                    }
+                } else {
+                    return
                 }
             }
         }
         Err(e) => error!("{}", e)
     }
     let mut root = Folder::new(remote_path.to_owned());
-
     let _ = travel_dir_dav(&mut root, &client);
 
-    println!("Creating the folder structure ...");
+    print!("Creating the folder structure on Nextcloud ... ");
     if let Ok(files) = trave_dir_local(Path::new(local_path), &mut root, &client, &extractor, depth.to_string()) {
         println!("done");
         upload_folder(files, &client);
