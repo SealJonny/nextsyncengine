@@ -15,6 +15,7 @@ use flexi_logger::{Logger, Duplicate, FileSpec, WriteMode};
 use log::error;
 use chrono::{Datelike, Local, TimeZone};
 use clap::{Arg, Command};
+use std::sync::{Arc, Mutex};
 
 
 fn init_logger(config_folder: &Path) {
@@ -149,6 +150,16 @@ fn upload_folder(files: Vec<File>, client: &NextcloudClient) {
     }
 }
 
+// splits a vector into two new vectors each containing one half of the original vector
+fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
+    let mut mid: usize;
+    if vec_org.len() % 2 == 0 {
+        mid = vec_org.len() / 2;
+    } else {
+        mid = (vec_org.len() + 1) / 2;
+    }
+    (vec_org[..mid].to_vec(), vec_org[mid..].to_vec())
+}
 
 fn main() {
     let version = "0.1.0";
@@ -174,6 +185,12 @@ fn main() {
     let client = NextcloudClient::new(server_url, username.clone(), password);
     let extractor = Extractor::new(exiftool);
 
+    let mut release_mode = true;
+    #[cfg(debug_assertions)]
+    {
+        release_mode = false;
+    }
+
     let matches = Command::new("nextsyncengine")
         .version(version)
         .about("Have a look at the README.md at https://github.com/SealJonny/nextsyncengine")
@@ -181,14 +198,14 @@ fn main() {
             Arg::new("local_path")
                 .long("local_path")
                 .value_parser(clap::value_parser!(String))
-                .required(true)
+                .required(release_mode)
                 .help("The path to your local folder which will be uploaded"),
         )
         .arg(
             Arg::new("remote_path")
                 .long("remote_path")
                 .value_parser(clap::value_parser!(String))
-                .required(true)
+                .required(release_mode)
                 .help("The location where on your Nextcloud server the folder will be uploaded"),
         )
         .arg(
@@ -199,11 +216,25 @@ fn main() {
                 .help("Options are: year, month, and day. Determines the depth of the folder structure."),
         )
         .get_matches();
+    
+    let local_path: String;
+    let remote_path: String;
+    let depth: String;
+    #[cfg(not(debug_assertions))]
+    {
+        local_path = matches.get_one::<String>("local_path").expect("required");
+        remote_path = matches.get_one::<String>("remote_path").expect("required");
+        let default_depth = &"month".to_string();
+        depth = matches.get_one::<String>("depth").unwrap_or(default_depth);
+    }
 
-    let local_path = matches.get_one::<String>("local_path").expect("required");
-    let remote_path = matches.get_one::<String>("remote_path").expect("required");
-    let default_depth = &"month".to_string();
-    let depth = matches.get_one::<String>("depth").unwrap_or(default_depth);
+    #[cfg(debug_assertions)]
+    {
+        local_path = "/home/sealjonny/Downloads/Converted".to_string();
+        remote_path = "/TestDebug".to_string();
+        depth = "month".to_string();
+    }
+
     
     print!("Checking if Nextcloud server is online ... ");
     match client.is_online() {
@@ -243,7 +274,7 @@ fn main() {
     let _ = travel_dir_dav(&mut root, &client);
 
     print!("Creating the folder structure on Nextcloud ... ");
-    if let Ok(files) = trave_dir_local(Path::new(local_path), &mut root, &client, &extractor, depth.to_string()) {
+    if let Ok(files) = trave_dir_local(Path::new(&local_path), &mut root, &client, &extractor, depth.to_string()) {
         println!("done");
         upload_folder(files, &client);
     } else {
