@@ -7,7 +7,8 @@ use chrono::offset::LocalResult;
 use filesystem::{File, Folder};
 use nextcloud::NextcloudClient;
 use std::error::Error;
-use std::{fs, io};
+use std::thread::JoinHandle;
+use std::{fs, io, vec};
 use std::{env, path::PathBuf};
 use std::path::Path;
 use media::Extractor;
@@ -131,28 +132,45 @@ fn trave_dir_local(root_path: &Path, root_folder: &mut Folder, client: &Nextclou
     Ok(files)
 }
 
-fn upload_folder(files: Vec<File>, client: &NextcloudClient) {
-    let mut total_size: u64 = 0;
-    for file in &files {
-        total_size += file.get_size()
-    }
+// fn upload_folder(files: Vec<File>, client: &NextcloudClient) {
+//     let mut total_size: u64 = 0;
+//     for file in &files {
+//         total_size += file.get_size()
+//     }
 
-    let mut uploaded_size: u64 = 0;
-    helpers::progress_bar(uploaded_size, total_size, "Uploading", "");
+//     let mut uploaded_size: u64 = 0;
+//     helpers::progress_bar(uploaded_size, total_size, "Uploading", "");
+//     for file in files {
+//         let size = file.get_size();
+//         if let Err(e) = client.upload_file(file) {
+//             error!("{}", e);
+//         } else {
+//             uploaded_size += size;
+//             helpers::progress_bar(uploaded_size, total_size, "Uploading", "");
+//         }
+//     }
+// }
+
+// uploads a vec of files to nextcloud and updates the progress bar
+fn upload_folder(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64, shared_uploaded_size: Arc<Mutex<u64>>) {
     for file in files {
         let size = file.get_size();
+        // uplaoding the current file to nextcloud
         if let Err(e) = client.upload_file(file) {
             error!("{}", e);
         } else {
-            uploaded_size += size;
-            helpers::progress_bar(uploaded_size, total_size, "Uploading", "");
+            // updating the progress bar
+            let mut uploaded_size = shared_uploaded_size.lock().unwrap();
+            *uploaded_size += size;
+            helpers::progress_bar(*uploaded_size, total_size, "Uploading", "");
         }
     }
 }
 
 // splits a vector into two new vectors each containing one half of the original vector
 fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
-    let mut mid: usize;
+    let mid: usize;
+    // determine the mid index of the vec
     if vec_org.len() % 2 == 0 {
         mid = vec_org.len() / 2;
     } else {
@@ -191,6 +209,7 @@ fn main() {
         release_mode = false;
     }
 
+    // parser for cli options
     let matches = Command::new("nextsyncengine")
         .version(version)
         .about("Have a look at the README.md at https://github.com/SealJonny/nextsyncengine")
@@ -220,12 +239,13 @@ fn main() {
     let local_path: String;
     let remote_path: String;
     let depth: String;
+
     #[cfg(not(debug_assertions))]
     {
-        local_path = matches.get_one::<String>("local_path").expect("required");
-        remote_path = matches.get_one::<String>("remote_path").expect("required");
+        local_path = matches.get_one::<String>("local_path").expect("required").to_string();
+        remote_path = matches.get_one::<String>("remote_path").expect("required").to_string();
         let default_depth = &"month".to_string();
-        depth = matches.get_one::<String>("depth").unwrap_or(default_depth);
+        depth = matches.get_one::<String>("depth").unwrap_or(default_depth).to_string();
     }
 
     #[cfg(debug_assertions)]
@@ -235,7 +255,7 @@ fn main() {
         depth = "month".to_string();
     }
 
-    
+    // checking if nextcloud server is online and not in maintenance mode and terminating execution if it is offline.
     print!("Checking if Nextcloud server is online ... ");
     match client.is_online() {
         Ok(val) => {
@@ -253,6 +273,7 @@ fn main() {
 
     println!("You are logged in as {}.", &username);
 
+    // check if the root folder exists and if not ask the user if he wants to create it
     match client.exists_folder(Path::new(&remote_path)) {
         Ok(val) => {
             if !val {
@@ -270,13 +291,55 @@ fn main() {
         }
         Err(e) => error!("{}", e)
     }
+
+    // create the cached version of the nextcloud folder structure
     let mut root = Folder::new(remote_path.to_owned());
     let _ = travel_dir_dav(&mut root, &client);
 
     print!("Creating the folder structure on Nextcloud ... ");
+
+    // creating the missing folders on nextcloud and uploading the files in 4 threads to nextcloud
     if let Ok(files) = trave_dir_local(Path::new(&local_path), &mut root, &client, &extractor, depth.to_string()) {
         println!("done");
-        upload_folder(files, &client);
+
+        // calculate the totat upload size
+        let mut total_size: u64 = 0;
+        for file in &files {
+            total_size += file.get_size()
+        }
+
+        // create a shared nextcloud_client and a counter to track the upload progress and update the progress bar accordingly 
+        let shared_client = Arc::new(client);
+        let shared_uploaded_size: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+
+        // split the original vec 'files' in 4 seperate vecs and pass each one of them to a seperate thread
+        let mut splitted_files: Vec<Vec<File>> = vec![];
+
+        let halfs = split_vec_to_vecs(files);
+        let mut quarters: Vec<(Vec<File>, Vec<File>)> = vec![];
+        quarters.push(split_vec_to_vecs(halfs.0));
+        quarters.push(split_vec_to_vecs(halfs.1));
+
+        for q in quarters {
+            splitted_files.push(q.0);
+            splitted_files.push(q.1);
+        }
+
+        // spawning the uploading threads
+        let mut threads: Vec<JoinHandle<()>> = vec![];
+        for v in splitted_files {
+            let uploaded_size = Arc::clone(&shared_uploaded_size);
+            let client_cl2 = Arc::clone(&shared_client);
+            threads.push(std::thread::spawn(move || {
+                upload_folder(v, client_cl2, total_size, uploaded_size);
+            }));
+        }
+
+        // joining the uploading threads
+        for thread in threads {
+            thread.join().expect("A thread could not be joined!");
+        }
+
     } else {
         panic!("Error files")
     }

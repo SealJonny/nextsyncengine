@@ -132,6 +132,7 @@ impl Folder {
     }
 }
 
+#[derive(Clone)]
 pub struct File {
     local_path: PathBuf,
     remote_parent: PathBuf,
