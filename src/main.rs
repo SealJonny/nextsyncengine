@@ -7,6 +7,7 @@ mod upload;
 use nextcloud::NextcloudClient;
 use media::Extractor;
 use upload::sorted::upload_sorted;
+use upload::unsorted::upload_unsorted;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -101,7 +102,27 @@ fn main() {
                         .default_value("month")
                         .help("Options are: year, month, and day. Determines the depth of the folder structure."),
                 )
-            )
+        )
+        .subcommand(
+    Command::new("upload:unsorted")
+                .about("Uploads a local folder to the specified location on Nextcloud")
+                .arg(
+                    Arg::new("local_path")
+                        .short('l')
+                        .long("local_path")
+                        .value_parser(clap::value_parser!(String))
+                        .required(true)
+                        .help("The path to your local folder which will be uploaded"),
+                )
+                .arg(
+                    Arg::new("remote_path")
+                        .short('r')
+                        .long("remote_path")
+                        .value_parser(clap::value_parser!(String))
+                        .required(true)
+                        .help("The location where on your Nextcloud server the folder will be uploaded"),
+                )
+        )
         .get_matches();
     
     
@@ -121,7 +142,9 @@ fn main() {
         }
     }
     
+    // ToDo: add functionality to test if the credentials are valid
     println!("{}", format!("You are logged in as {}.", &username).green());
+
     match matches.subcommand() {
         Some(("upload:sorted", upload_matches)) => {
             // extract the options for upload:sorted
@@ -133,6 +156,17 @@ fn main() {
             
             // start the sorted upload of the folder at 'local_path' to 'remote_path'
             match upload_sorted(local_path, remote_path, depth, client, extractor) {
+                Err(e) => error!("{}", e),
+                _ => {}
+            }
+        }
+
+        Some(("upload:unsorted", upload_matches)) => {
+            // extract the options for upload:unsorted
+            let local_path = upload_matches.get_one::<String>("local_path").expect("required").trim().to_string();
+            let remote_path = upload_matches.get_one::<String>("remote_path").expect("required").trim().to_string();
+
+            match upload_unsorted(local_path, remote_path, client, extractor) {
                 Err(e) => error!("{}", e),
                 _ => {}
             }

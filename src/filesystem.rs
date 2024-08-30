@@ -141,14 +141,14 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(local_path: &Path, remote_parent: &Path, mtime: i64) -> File {
+    pub fn new(local_path: &Path, mtime: i64) -> File {
         let mut size: u64 = 0;
         if let Ok(meta_data) = local_path.metadata() {
             size = meta_data.size()
         }
         return File {
             local_path: local_path.to_owned(),
-            remote_parent: remote_parent.to_owned(),
+            remote_parent: PathBuf::new(),
             mtime: mtime,
             size: size
         }
@@ -164,6 +164,10 @@ impl File {
     
     pub fn get_remote_parent(&self) -> &Path {
         &self.remote_parent
+    }
+
+    pub fn set_remote_parent(&mut self, remote_parent: PathBuf) {
+        self.remote_parent.push(remote_parent);
     }
 
     pub fn get_mtime(&self) -> i64 {

@@ -1,0 +1,134 @@
+use std::path::{Path, PathBuf};
+use std::io;
+use std::error::Error;
+use std::fs;
+use log::error;
+use colored::*;
+
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
+
+use crate::nextcloud::NextcloudClient;
+use crate::filesystem::File;
+use crate::media::Extractor;
+use crate::helpers;
+
+// travels through the local folder and recursively stores all files in a vector
+pub fn trave_dir_local(root_path: &Path, extractor: &Extractor) -> Result<Vec<File>, Box<dyn Error>> {
+    let mut paths_folder: Vec<PathBuf> = Vec::new();
+    paths_folder.push(root_path.to_path_buf());
+
+    let mut files: Vec<File> = Vec::new();
+
+    // lists the items in a folder and add the subfolders to 'paths_folder' and the files to 'files'
+    while let Some(current_folder) = paths_folder.pop() {
+        let entries = fs::read_dir(current_folder)?;
+        for entry in entries {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+    
+            if file_type.is_dir() {
+                paths_folder.push(entry.path());
+                continue
+            }
+            let mtime = extractor.extract_date_time(entry.path().as_path())?;
+            files.push(File::new(entry.path().as_path(), mtime));
+        }
+    }
+    Ok(files)
+}
+
+// uploads a vec of files to nextcloud and updates the progress bar
+pub fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64, shared_uploaded_size: Arc<Mutex<u64>>) {
+    for file in files {
+        let size = file.get_size();
+        // uplaoding the current file to nextcloud
+        if let Err(e) = client.upload_file(file) {
+            error!("{}", e);
+        } else {
+            // updating the progress bar
+            let mut uploaded_size = shared_uploaded_size.lock().unwrap();
+            *uploaded_size += size;
+            helpers::progress_bar(*uploaded_size, total_size, "Uploading", "");
+        }
+    }
+}
+
+// splits a vector into two new vectors each containing one half of the original vector
+pub fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
+    let mid: usize;
+    // determine the mid index of the vec
+    if vec_org.len() % 2 == 0 {
+        mid = vec_org.len() / 2;
+    } else {
+        mid = (vec_org.len() + 1) / 2;
+    }
+    (vec_org[..mid].to_vec(), vec_org[mid..].to_vec())
+}
+
+pub fn exists_root_folder(root_folder: &Path, client: &NextcloudClient) -> Result<(), Box<dyn Error>> {
+    // check if the root folder exists and if not ask the user if he wants to create it
+    match client.exists_folder(root_folder) {
+        Ok(val) => {
+            if !val {
+                print!("{}", format!("The folder {} does not exist on your Nextcloud instance.\nWould you like to create it?\nYes(y) or No(n) ", root_folder.to_str().unwrap_or_default()).yellow());
+                let mut answer = String::new();
+                let _ = io::stdin().read_line(&mut answer);
+                if answer.trim().to_lowercase() == "y" || answer.trim().to_lowercase() == "yes" {
+                    if let Err(e) = client.create_folder(root_folder) {
+                        error!("{}", e);
+                        return Err(e)
+                    }
+                }
+            }
+            Ok(())
+        }
+        Err(e) => return Err(e)
+    }
+}
+
+// starts the uploads in 4 parallel threads
+pub fn threaded_upload(files: Vec<File>, client: NextcloudClient) -> Result<(), Box<io::Error>> {
+    // calculate the totat upload size
+    let mut total_size: u64 = 0;
+    for file in &files {
+        total_size += file.get_size()
+    }
+
+    // create a shared nextcloud_client and a counter to track the upload progress and update the progress bar accordingly 
+    let shared_client = Arc::new(client);
+    let shared_uploaded_size: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+
+    // split the original vec 'files' in 4 seperate vecs and pass each one of them to a seperate thread
+    let mut splitted_files: Vec<Vec<File>> = vec![];
+
+    let halfs = split_vec_to_vecs(files);
+    let mut quarters: Vec<(Vec<File>, Vec<File>)> = vec![];
+    quarters.push(split_vec_to_vecs(halfs.0));
+    quarters.push(split_vec_to_vecs(halfs.1));
+
+    for q in quarters {
+        splitted_files.push(q.0);
+        splitted_files.push(q.1);
+    }
+
+    // spawning the uploading threads
+    let mut threads: Vec<JoinHandle<()>> = vec![];
+    for v in splitted_files {
+        let uploaded_size = Arc::clone(&shared_uploaded_size);
+        let client_clone = Arc::clone(&shared_client);
+        threads.push(std::thread::spawn(move || {
+        upload_files(v, client_clone, total_size, uploaded_size);
+        }));
+    }
+
+    // joining the uploading threads
+    for thread in threads {
+        match thread.join() {
+            Err(_) => return Err(Box::new(io::Error::new(io::ErrorKind::Other, "Failed to join upload threads!"))),
+            _ => {}
+        };
+    }
+    Ok(())
+}
+
