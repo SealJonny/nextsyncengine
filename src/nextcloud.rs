@@ -22,6 +22,7 @@ impl NextcloudClient {
     pub fn new(url_server: String, username: String, password: String) -> NextcloudClient {
         let mut url_dav = url_server.clone();
         url_dav.push_str(format!("/remote.php/dav/files/{}", username).as_str());
+        
         return NextcloudClient{
             url_server: url_server,
             url_dav: url_dav,
@@ -41,6 +42,24 @@ impl NextcloudClient {
         }
         Ok(true)
     }
+
+    pub fn authenticate(&self) -> Result<bool, Box<dyn Error>> {
+        let response = 
+            self.client.get(&self.url_dav)
+                .basic_auth(&self.username, Some(&self.password))
+                .send()?;
+
+        if response.status().is_success() {
+            return Ok(true)
+        }
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+            return Ok(false)
+        }
+        if let Err(e) = response.error_for_status() {
+            return Err(Box::new(e))
+        }
+        Ok(false)
+    }
     
     // uploads a file to the specified location on a nextcloud server
     pub fn upload_file(&self, file: filesystem::File) -> Result<(), Box<dyn Error>> {
@@ -51,7 +70,7 @@ impl NextcloudClient {
 
         let file_content = Self::read_file_to_vec(local_path)?;
 
-        // extract the file name from local_path and build the final url
+        // extract the file name {from local_path and build the final url
         let url: String;
         if let Some(file_name) = local_path.file_name().and_then(|name| name.to_str()) {
             let remote_parent = self.path_to_str(remote_parent)?;

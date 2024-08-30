@@ -18,7 +18,11 @@ fn get_remote_parent(files: &mut Vec<File>, root_folder: PathBuf) {
 // uploads a folder to Nextcloud keeping the original structure
 pub fn upload_unsorted(local_path: String, remote_path: String, client: NextcloudClient, extractor: Extractor) -> Result<(), Box<dyn Error>> {
     // check if the root folder exists and if not ask the user if he wants to create it
-    common::exists_root_folder(Path::new(&remote_path), &client)?;
+    match common::exists_root_folder(Path::new(&remote_path), &client) {
+        Ok(true) => {}
+        Ok(false) => return Ok(()),
+        Err(e) => return Err(e)
+    }
 
     let root_folder = PathBuf::from(remote_path);
 

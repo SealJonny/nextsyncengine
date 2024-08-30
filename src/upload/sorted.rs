@@ -90,7 +90,11 @@ fn travel_dir_dav(root: &mut Folder, client: &NextcloudClient) -> Result<(), Box
 
 pub fn upload_sorted(local_path: String, remote_path: String, depth: String, client: NextcloudClient, extractor: Extractor) -> Result<(), Box<dyn Error>> {
     // check if the root folder exists and if not ask the user if he wants to create it
-    common::exists_root_folder(Path::new(&remote_path), &client)?;
+    match common::exists_root_folder(Path::new(&remote_path), &client) {
+        Ok(true) => {}
+        Ok(false) => return Ok(()),
+        Err(e) => return Err(e)
+    }
 
     // create the cached version of the nextcloud folder structure
     let mut root = Folder::new(remote_path.to_owned());

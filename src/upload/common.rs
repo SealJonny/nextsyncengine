@@ -66,7 +66,7 @@ pub fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
     (vec_org[..mid].to_vec(), vec_org[mid..].to_vec())
 }
 
-pub fn exists_root_folder(root_folder: &Path, client: &NextcloudClient) -> Result<(), Box<dyn Error>> {
+pub fn exists_root_folder(root_folder: &Path, client: &NextcloudClient) -> Result<bool, Box<dyn Error>> {
     // check if the root folder exists and if not ask the user if he wants to create it
     match client.exists_folder(root_folder) {
         Ok(val) => {
@@ -79,9 +79,11 @@ pub fn exists_root_folder(root_folder: &Path, client: &NextcloudClient) -> Resul
                         error!("{}", e);
                         return Err(e)
                     }
+                } else {
+                    return Ok(false)
                 }
             }
-            Ok(())
+            Ok(true)
         }
         Err(e) => return Err(e)
     }

@@ -142,8 +142,19 @@ fn main() {
         }
     }
     
+    match client.authenticate() {
+        Ok(true) => println!("{}", format!("You are logged in as {}.", &username).green()),
+        Ok(false) => {
+            println!("{}", "Your Nextcloud credentials are wrong. Check your .env!".red());
+            return
+        }
+        Err(e) =>  {
+            error!("{}", e);
+            return
+        }
+    }
     // ToDo: add functionality to test if the credentials are valid
-    println!("{}", format!("You are logged in as {}.", &username).green());
+
 
     match matches.subcommand() {
         Some(("upload:sorted", upload_matches)) => {
