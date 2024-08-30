@@ -9,10 +9,11 @@ use media::Extractor;
 use upload::sorted::upload_sorted;
 
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use flexi_logger::{Logger, Duplicate, FileSpec, WriteMode};
 use log::error;
 use clap::{Arg, Command};
+use colored::*;
 
 
 fn init_logger(config_folder: &Path) {
@@ -34,15 +35,26 @@ fn init_logger(config_folder: &Path) {
 fn main() {
     let version = "0.1.0";
 
-    let config_folder = Path::new("_nextsyncengine_");
-    init_logger(config_folder);
+    // get parent folder of executable
+    let mut exe_path: PathBuf;
+    match env::current_exe() {
+        Ok(val) => exe_path = val,
+        Err(e) => {
+            error!("{}", e);
+            return
+        }
+    }
+    exe_path.pop();
+
+    let config_folder = exe_path.join("_nextsyncengine_");
+    init_logger(&config_folder);
     let path = config_folder.join(".env");
     dotenv::from_path(path).expect("Failed to read .env file");
 
     // Helper function to retrieve environment variables
     fn get_env_var(var_name: &str) -> String {
         env::var(var_name).unwrap_or_else(|e| {
-            eprintln!("Error while reading '{}': {}", var_name, e);
+            error!("Error while reading '{}': {}", var_name, e);
             String::new()
         })
     }
@@ -59,6 +71,9 @@ fn main() {
     let matches = Command::new("nextsyncengine")
         .version(version)
         .about("Have a look at the README.md at https://github.com/SealJonny/nextsyncengine")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .propagate_version(true)
         .subcommand(
     Command::new("upload:sorted")
                 .about("Uploads the files of specified folder to a organized structure on Nextcloud")
@@ -91,14 +106,14 @@ fn main() {
     
     
     // checking if nextcloud server is online and not in maintenance mode and terminating execution if it is offline.
-    print!("Checking if Nextcloud server is online ... ");
+    print!("{}", "Checking if Nextcloud server is online ... ".green());
     match client.is_online() {
         Ok(val) => {
             if !val {
-                println!("\nNextcloud server is offline or in maintenance mode!");
+                println!("{}", "\nNextcloud server is offline or in maintenance mode!".red());
                 return
             }
-            println!("done")
+            println!("{}", "done".green())
         }
         Err(e) => {
             error!("{}", e);
@@ -106,7 +121,7 @@ fn main() {
         }
     }
     
-    println!("You are logged in as {}.", &username);
+    println!("{}", format!("You are logged in as {}.", &username).green());
     match matches.subcommand() {
         Some(("upload:sorted", upload_matches)) => {
             // extract the options for upload:sorted

@@ -6,6 +6,7 @@ use std::io;
 use std::error::Error;
 use std::fs;
 use log::error;
+use colored::*;
 
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -145,7 +146,7 @@ pub fn upload_sorted(local_path: String, remote_path: String, depth: String, cli
     match client.exists_folder(Path::new(&remote_path)) {
         Ok(val) => {
             if !val {
-                print!("The folder {} does not exist on your Nextcloud instance.\nWould you like to create it?\nYes(y) or No(n) ", &remote_path);
+                print!("{}", format!("The folder {} does not exist on your Nextcloud instance.\nWould you like to create it?\nYes(y) or No(n) ", &remote_path).yellow());
                 let mut answer = String::new();
                 let _ = io::stdin().read_line(&mut answer);
                 if answer.trim().to_lowercase() == "y" || answer.trim().to_lowercase() == "yes" {
@@ -164,12 +165,12 @@ pub fn upload_sorted(local_path: String, remote_path: String, depth: String, cli
     let mut root = Folder::new(remote_path.to_owned());
     let _ = travel_dir_dav(&mut root, &client);
 
-    print!("Creating the folder structure on Nextcloud ... ");
+    print!("{}", "Creating the folder structure on Nextcloud ... ".green());
 
     // creating the missing folders on nextcloud and uploading the files in 4 threads to nextcloud
     match trave_dir_local(Path::new(&local_path), &mut root, &client, &extractor, depth.to_string()) {
         Ok(files) => {
-            println!("done");
+            println!("{}", "done".green());
 
             // calculate the totat upload size
             let mut total_size: u64 = 0;
