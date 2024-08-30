@@ -38,6 +38,7 @@ NextSyncEngine is a powerful CLI tool designed to streamline file uploads from a
 
 ### 🔐 Credentials & Settings
 The credential and settings  are stored in a `.env` file. Replace the placeholders with your values.
+
 **Ensure that the server url does not have a trailing '/'!**
 
 ```plaintext
@@ -48,8 +49,7 @@ EXIFTOOL=/path/to/exiftool/binary
 ```
 
 ### 🔧 Installation
-#### 🛠️ Binary
-Either download the pre compiled binary from the latest release or compile the binary yourself.
+Either download the pre compiled binary from the latest release or compile the binary yourself:
 ```bash
 git clone git@github.com:SealJonny/nextsyncengine.git
 cd nextsyncengine
