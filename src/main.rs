@@ -77,14 +77,14 @@ fn main() {
         .propagate_version(true)
         .subcommand(
     Command::new("upload:sorted")
-                .about("Uploads the files of specified folder to a organized structure on Nextcloud")
+                .about("Uploads files from the specified folder to Nextcloud, organizing them into a structured folder hierarchy")
                 .arg(
                     Arg::new("local_path")
                         .short('l')
                         .long("local_path")
                         .value_parser(clap::value_parser!(String))
                         .required(true)
-                        .help("The path to your local folder which will be uploaded"),
+                        .help("The path to the local folder that you want to upload"),
                 )
                 .arg(
                     Arg::new("remote_path")
@@ -92,7 +92,7 @@ fn main() {
                         .long("remote_path")
                         .value_parser(clap::value_parser!(String))
                         .required(true)
-                        .help("The location where on your Nextcloud server the folder will be uploaded"),
+                        .help("The path on your Nextcloud server where the folder will be uploaded"),
                 )
                 .arg(
                     Arg::new("depth")
@@ -100,19 +100,19 @@ fn main() {
                         .long("depth")
                         .value_parser(clap::value_parser!(String))
                         .default_value("month")
-                        .help("Options are: year, month, and day. Determines the depth of the folder structure."),
+                        .help("Sets the depth of the folder structure. Options are: year, month or day"),
                 )
         )
         .subcommand(
     Command::new("upload:unsorted")
-                .about("Uploads a local folder to the specified location on Nextcloud")
+                .about("Uploads a local folder to Nextcloud recursively, placing all files directly in the specified root folder without preserving the local folder structure")
                 .arg(
                     Arg::new("local_path")
                         .short('l')
                         .long("local_path")
                         .value_parser(clap::value_parser!(String))
                         .required(true)
-                        .help("The path to your local folder which will be uploaded"),
+                        .help("The path to the local folder that you want to upload"),
                 )
                 .arg(
                     Arg::new("remote_path")
@@ -120,7 +120,7 @@ fn main() {
                         .long("remote_path")
                         .value_parser(clap::value_parser!(String))
                         .required(true)
-                        .help("The location where on your Nextcloud server the folder will be uploaded"),
+                        .help("The path on your Nextcloud server where the folder will be uploaded"),
                 )
         )
         .get_matches();
