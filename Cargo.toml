@@ -1,0 +1,18 @@
+[package]
+name = "nextsyncengine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.12.7", features = ["blocking", "cookies"] }
+base64 = "0.22.1"
+dotenv = "0.15.0"
+chrono = "0.4.38"
+xml-rs = "0.8.21"
+log = "0.4.22"
+flexi_logger = "0.28.5"
+clap = { version = "4.5.16", features = ["derive"] }
+colored = "2.1.0"
+
+[profile.release]
+lto = true

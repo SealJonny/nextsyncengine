@@ -1,4 +1,2 @@
-.env
-process.log
-ToDo.md
-build
+/target
+_nextsyncengine_
