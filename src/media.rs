@@ -1,8 +1,9 @@
-use std::os::unix::fs::MetadataExt;
 use std::process::Command;
 use std::path::Path;
 use std::io;
 use chrono::NaiveDateTime;
+
+use crate::helpers;
 
 pub struct Extractor<'a> {
     exiftool: String,
@@ -52,9 +53,9 @@ impl<'a> Extractor<'a> {
     // extracts the modification date using the os
     fn extract_date_time_os(&self, path: &Path) -> Result<i64, Box<dyn std::error::Error>> {
         // handling potential error and returning mtime if present
-        match path.metadata() {
-            Ok(meta_data) => Ok(meta_data.mtime()),
-            Err(e) => Err(Box::new(e))
+        match helpers::get_metadata(path.to_str().unwrap()) {
+            Ok(meta_data) => Ok(meta_data.get_mtime()),
+            Err(e) => Err(e)
         }
 
     }

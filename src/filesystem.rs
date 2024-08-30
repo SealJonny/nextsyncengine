@@ -1,5 +1,6 @@
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+
+use crate::helpers::get_metadata;
 
 pub struct Folder{
     name: String,
@@ -143,8 +144,8 @@ pub struct File {
 impl File {
     pub fn new(local_path: &Path, mtime: i64) -> File {
         let mut size: u64 = 0;
-        if let Ok(meta_data) = local_path.metadata() {
-            size = meta_data.size()
+        if let Ok(meta_data) = get_metadata(local_path.to_str().unwrap()) {
+            size = meta_data.get_size();
         }
         return File {
             local_path: local_path.to_owned(),
