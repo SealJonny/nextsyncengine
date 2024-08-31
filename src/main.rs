@@ -34,8 +34,6 @@ fn init_logger(config_folder: &Path) {
 }
 
 fn main() {
-    let version = "0.1.0";
-
     // get parent folder of executable
     let mut exe_path: PathBuf;
     match env::current_exe() {
@@ -70,7 +68,7 @@ fn main() {
 
     // parser for cli options
     let matches = Command::new("nextsyncengine")
-        .version(version)
+        .version(env!("CARGO_PKG_VERSION"))
         .about("Have a look at the README.md at https://github.com/SealJonny/nextsyncengine")
         .subcommand_required(true)
         .arg_required_else_help(true)
