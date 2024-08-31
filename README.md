@@ -30,8 +30,7 @@ NextSyncEngine is a powerful Rust-based CLI tool designed to streamline file upl
       - ...
     - ...
   - ...
-  
-⚠️ **Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
+
 
 ### 🚀 Features
 
@@ -74,6 +73,8 @@ mv /path/to/.env .
 
 ### ⚙️ Usage
 Type `./path/to/nextsyncengine` in your terminal (may need sudo if procces.log is owned by root) this will print out all available commands and options with a short explanation.
+
+ **⚠️Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
 
 
 ### 📜 Logs
