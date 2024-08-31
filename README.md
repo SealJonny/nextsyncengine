@@ -2,7 +2,7 @@
 
 ### 📖 Overview
 
-NextSyncEngine is a powerful CLI tool designed to streamline file uploads from a local directory directly to your Nextcloud instance. The tool automatically organizes files into a structured folder hierarchy, such as:
+NextSyncEngine is a powerful Rust-based CLI tool designed to streamline file uploads from a local directory directly to your Nextcloud instance. The tool automatically organizes files into a structured folder hierarchy, such as:
 
 - **root**
   - **2024**
@@ -35,6 +35,14 @@ NextSyncEngine is a powerful CLI tool designed to streamline file uploads from a
 
 ⚠️ **Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
 
+### 🚀 Features
+
+- **Directory-Based Upload**: Seamlessly upload files from a local directory to Nextcloud while preserving a logical folder hierarchy. The tool automatically sorts files into nested folders organized by year, month, and day.
+
+
+- **Unsorted Upload Option**: Alternatively, upload files in an unsorted manner, where files are uploaded directly to the specified folder without any directory restructuring.
+
+- **Error Logging**: Detailed logging of any errors or warnings during execution is available in `process.log`, making it easier to troubleshoot issues.
 
 ### 🔐 Credentials & Settings
 The credential and settings  are stored in a `.env` file. Replace the placeholders with your values.
