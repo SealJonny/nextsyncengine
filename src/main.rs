@@ -142,6 +142,7 @@ fn main() {
         }
     }
     
+    // check if the credentials in the .env are valid
     match client.authenticate() {
         Ok(true) => println!("{}", format!("You are logged in as {}.", &username).green()),
         Ok(false) => {
@@ -153,18 +154,15 @@ fn main() {
             return
         }
     }
-    // ToDo: add functionality to test if the credentials are valid
 
-
+    // check which command was used by the user
     match matches.subcommand() {
         Some(("upload:sorted", upload_matches)) => {
             // extract the options for upload:sorted
-            let local_path = upload_matches.get_one::<String>("local_path").expect("required").trim().to_string();
-            let remote_path = upload_matches.get_one::<String>("remote_path").expect("required").trim().to_string();
-            
-            let default_depth = &"month".to_string();
-            let depth = upload_matches.get_one::<String>("depth").unwrap_or(default_depth).trim().to_string();
-            
+            let local_path = upload_matches.get_one::<String>("local_path").expect("--local_path is required").trim().to_string();
+            let remote_path = upload_matches.get_one::<String>("remote_path").expect("--remote_path is required").trim().to_string();
+            let depth = upload_matches.get_one::<String>("depth").expect("--depth was not set").trim().to_string();
+
             // start the sorted upload of the folder at 'local_path' to 'remote_path'
             match upload_sorted(local_path, remote_path, depth, client, extractor) {
                 Err(e) => error!("{}", e),
