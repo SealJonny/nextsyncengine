@@ -64,23 +64,32 @@ impl<'a> Extractor<'a> {
     fn extract_date_time_exif(&self, path: &Path) -> Result<i64, Box<dyn std::error::Error>> {
         // convert path to str and execute exiftool bash command to extract the mtime from the file
         let result: String;
+        
         if let Some(path_str) = path.to_str() {
+            #[cfg(unix)]
             let output = Command::new("bash")
                 .arg("-c")
                 .arg(format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}' | head -n 1", &self.exiftool, path_str))
                 .output()
                 .expect("Failed to execute command");
             
+            #[cfg(windows)]
+            let output = Command::new("powershell")
+                .arg("-Command")
+                .arg(format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}' | Select-Object -First 1", &self.exiftool, path_str))
+                .output()
+                .expect("Failed to execute command");
+
             // convert the ouput to a string and remove trailing whitespaces, line breackers or indents
             let stdout = String::from_utf8_lossy(&output.stdout);
             result = stdout.trim_end().to_string();
         } else {
             return Err(Box::new(io::Error::new(io::ErrorKind::Other, "Failed to convert path to &str!")))
         }
-
         // converting the extracted date time string into a unix timestamp
         let format = "%Y:%m:%d %H:%M:%S";
         let unix_mtime = NaiveDateTime::parse_from_str(&result, format)?;
+
         Ok(unix_mtime.and_utc().timestamp())
     }
 
