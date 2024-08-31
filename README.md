@@ -30,9 +30,7 @@ NextSyncEngine is a powerful Rust-based CLI tool designed to streamline file upl
       - ...
     - ...
   - ...
-
-🕒 Caching: The folder structure is cached to improve performance. 
-
+  
 ⚠️ **Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
 
 ### 🚀 Features
