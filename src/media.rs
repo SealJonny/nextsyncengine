@@ -2,8 +2,24 @@ use std::process::Command;
 use std::path::Path;
 use std::io;
 use chrono::NaiveDateTime;
+use std::error::Error;
 
-use crate::helpers;
+const IMAGE_FORMATS: [&str; 43] = [
+    ".jpg", ".jpeg", ".tif", ".tiff", ".gif", ".bmp", ".png", ".ppm",
+    ".pgm", ".pbm", ".pnm", ".webp", ".heif", ".heic", ".jp2", ".j2k",
+    ".jpf", ".jpx", ".jpm", ".mj2", ".ico", ".cr2", ".cr3", ".nef",
+    ".nrw", ".orf", ".raf", ".arw", ".rw2", ".dng", ".sr2", ".3fr",
+    ".rwl", ".mrw", ".raw", ".pef", ".iiq", ".k25", ".kc2", ".erf",
+    ".srw", ".x3f", ".svg"
+];
+
+const VIDEO_FORMATS: [&str; 36] = [
+    ".mp4", ".mov", ".avi", ".mkv", ".3gp", ".3g2", ".wmv", ".asf",
+    ".flv", ".f4v", ".swf", ".m2ts", ".mts", ".m2t", ".ts", ".mxf",
+    ".mpg", ".mpeg", ".mpe", ".mpv", ".m4v", ".m4p", ".rm", ".rmvb",
+    ".webm", ".ogv", ".ogg", ".ogx", ".dv", ".dif", ".m2v", ".qt",
+    ".mjpg", ".mj2", ".gif", ".mov"
+];
 
 pub struct Extractor<'a> {
     exiftool: String,
@@ -53,7 +69,7 @@ impl<'a> Extractor<'a> {
     // extracts the modification date using the os
     fn extract_date_time_os(&self, path: &Path) -> Result<i64, Box<dyn std::error::Error>> {
         // handling potential error and returning mtime if present
-        match helpers::get_metadata(path.to_str().unwrap()) {
+        match get_metadata(path.to_str().unwrap()) {
             Ok(meta_data) => Ok(meta_data.get_mtime()),
             Err(e) => Err(e)
         }
@@ -95,19 +111,53 @@ impl<'a> Extractor<'a> {
 
 }
 
-const IMAGE_FORMATS: [&str; 43] = [
-    ".jpg", ".jpeg", ".tif", ".tiff", ".gif", ".bmp", ".png", ".ppm",
-    ".pgm", ".pbm", ".pnm", ".webp", ".heif", ".heic", ".jp2", ".j2k",
-    ".jpf", ".jpx", ".jpm", ".mj2", ".ico", ".cr2", ".cr3", ".nef",
-    ".nrw", ".orf", ".raf", ".arw", ".rw2", ".dng", ".sr2", ".3fr",
-    ".rwl", ".mrw", ".raw", ".pef", ".iiq", ".k25", ".kc2", ".erf",
-    ".srw", ".x3f", ".svg"
-];
+// custom Metadata struct for storing the mtime and size of a file
+pub struct CustomMetadata {
+    mtime: i64,
+    size: u64
+}
 
-const VIDEO_FORMATS: [&str; 36] = [
-    ".mp4", ".mov", ".avi", ".mkv", ".3gp", ".3g2", ".wmv", ".asf",
-    ".flv", ".f4v", ".swf", ".m2ts", ".mts", ".m2t", ".ts", ".mxf",
-    ".mpg", ".mpeg", ".mpe", ".mpv", ".m4v", ".m4p", ".rm", ".rmvb",
-    ".webm", ".ogv", ".ogg", ".ogx", ".dv", ".dif", ".m2v", ".qt",
-    ".mjpg", ".mj2", ".gif", ".mov"
-];
+impl CustomMetadata {
+    pub fn new(mtime: i64, size: u64) -> CustomMetadata {
+        return CustomMetadata {
+            mtime: mtime,
+            size: size
+        }
+    }
+
+    pub fn get_mtime(&self) -> i64 {
+        return self.mtime
+    }
+
+    pub fn get_size(&self) -> u64 {
+        return self.size
+    }
+}
+
+// unix specific function to extract metadata from a file
+#[cfg(unix)]
+pub fn get_metadata(path: &str) -> Result<CustomMetadata, Box<dyn Error>> {
+    use std::path::Path;
+    use std::os::unix::fs::MetadataExt;
+
+    let path = Path::new(path);
+
+    let metadata = path.metadata()?;
+
+    Ok(CustomMetadata::new(metadata.mtime(), metadata.size()))
+}
+
+// windows specific function to extract metadata from a file
+#[cfg(windows)]
+pub fn get_metadata(path: &str) -> Result<CustomMetadata, Box<dyn Error>> {
+    use std::fs::metadata;
+    let metadata = metadata(path)?;
+    let size: u64 = metadata.len().try_into().unwrap();
+
+    // extract modified date and convert it to a unix timestamp
+    let mod_time = metadata.modified()?;
+    let duration_since_epoche = mod_time.duration_since(std::time::UNIX_EPOCH)?;
+    let mtime: i64 = duration_since_epoche.as_secs().try_into().unwrap();
+
+    Ok(CustomMetadata::new(mtime, size))
+}

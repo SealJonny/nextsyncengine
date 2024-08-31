@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::helpers::get_metadata;
+use crate::media::get_metadata;
 
 pub struct Folder{
     name: String,

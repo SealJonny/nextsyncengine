@@ -13,6 +13,27 @@ use crate::filesystem::File;
 use crate::media::Extractor;
 use crate::helpers;
 
+// updates the terminal progress bar using the helpers::progress_bar function
+fn update_progress_bar(uploaded_size: u64, total_size: u64) {
+    // prettify the progress counter through converting the numbers into the suitable unit
+    let unit: String;
+    let mut uploaded_size_rounded = uploaded_size as f64;
+    let mut total_size_rounded = total_size as f64;
+    if total_size_rounded >= 1_000_000_000.0 {
+        total_size_rounded /= 1_000_000_000.0;
+        uploaded_size_rounded /= 1_000_000_000.0;
+        unit = "G".to_string();
+    } else {
+        total_size_rounded /= 1_000_000.0;
+        uploaded_size_rounded /= 1_000_000.0;
+        unit = "M".to_string();
+    }
+
+    // build the suffix and print the updated progress bar using helpers::progress_bar
+    let suffix = format!("{:.2}{}/{:.2}{}", uploaded_size_rounded, &unit, total_size_rounded, &unit);
+    helpers::progress_bar(uploaded_size, total_size, "Uploading", &suffix)
+}
+
 // travels through the local folder and recursively stores all files in a vector
 pub fn trave_dir_local(root_path: &Path, extractor: &Extractor) -> Result<Vec<File>, Box<dyn Error>> {
     let mut paths_folder: Vec<PathBuf> = Vec::new();
@@ -49,7 +70,7 @@ pub fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: 
             // updating the progress bar
             let mut uploaded_size = shared_uploaded_size.lock().unwrap();
             *uploaded_size += size;
-            helpers::progress_bar(*uploaded_size, total_size, "Uploading", "");
+            update_progress_bar(*uploaded_size, total_size);
         }
     }
 }
@@ -113,6 +134,9 @@ pub fn threaded_upload(files: Vec<File>, client: NextcloudClient) -> Result<(), 
         splitted_files.push(q.0);
         splitted_files.push(q.1);
     }
+
+    // print initial progress bar
+    update_progress_bar(0, total_size);
 
     // spawning the uploading threads
     let mut threads: Vec<JoinHandle<()>> = vec![];

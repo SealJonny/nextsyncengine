@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io;
 use std::io::Write;
 
@@ -16,55 +15,4 @@ pub fn progress_bar(iteration: u64, total: u64, prefix: &str, suffix: &str) {
     if iteration == total {
         println!();
     }
-}
-
-// custom Metadata struct for storing the mtime and size of a file
-pub struct CustomMetadata {
-    mtime: i64,
-    size: u64
-}
-
-impl CustomMetadata {
-    pub fn new(mtime: i64, size: u64) -> CustomMetadata {
-        return CustomMetadata {
-            mtime: mtime,
-            size: size
-        }
-    }
-
-    pub fn get_mtime(&self) -> i64 {
-        return self.mtime
-    }
-
-    pub fn get_size(&self) -> u64 {
-        return self.size
-    }
-}
-
-// unix specific function to extract metadata from a file
-#[cfg(unix)]
-pub fn get_metadata(path: &str) -> Result<CustomMetadata, Box<dyn Error>> {
-    use std::path::Path;
-    use std::os::unix::fs::MetadataExt;
-
-    let path = Path::new(path);
-
-    let metadata = path.metadata()?;
-
-    Ok(CustomMetadata::new(metadata.mtime(), metadata.size()))
-}
-
-// windows specific function to extract metadata from a file
-#[cfg(windows)]
-pub fn get_metadata(path: &str) -> Result<CustomMetadata, Box<dyn Error>> {
-    use std::fs::metadata;
-    let metadata = metadata(path)?;
-    let size: u64 = metadata.len().try_into().unwrap();
-
-    // extract modified date and convert it to a unix timestamp
-    let mod_time = metadata.modified()?;
-    let duration_since_epoche = mod_time.duration_since(std::time::UNIX_EPOCH)?;
-    let mtime: i64 = duration_since_epoche.as_secs().try_into().unwrap();
-
-    Ok(CustomMetadata::new(mtime, size))
 }
