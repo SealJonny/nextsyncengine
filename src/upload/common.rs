@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::io;
+use std::{io, vec};
 use std::error::Error;
 use std::fs;
 use log::error;
@@ -75,16 +75,49 @@ pub fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: 
     }
 }
 
+// // splits a vector into two new vectors each containing one half of the original vector
+// pub fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
+//     let mid: usize;
+//     // determine the mid index of the vec
+//     if vec_org.len() % 2 == 0 {
+//         mid = vec_org.len() / 2;
+//     } else {
+//         mid = (vec_org.len() + 1) / 2;
+//     }
+//     (vec_org[..mid].to_vec(), vec_org[mid..].to_vec())
+// }
+
 // splits a vector into two new vectors each containing one half of the original vector
-pub fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
-    let mid: usize;
-    // determine the mid index of the vec
-    if vec_org.len() % 2 == 0 {
-        mid = vec_org.len() / 2;
-    } else {
-        mid = (vec_org.len() + 1) / 2;
+pub fn split_vec_to_vecs(vec_org: Vec<File>, num_threads: usize) -> Vec<Vec<File>> {
+    // calculating the leftover of the division
+    let mut leftover = vec_org.len() % num_threads;
+    let mut splitted_vec_lens = vec![vec_org.len() / num_threads; num_threads];
+
+    // distributing leftover evenly on the lenghts of the sub vectors
+    while leftover > 0 {
+        for iter in splitted_vec_lens.iter_mut() {
+            if leftover == 0 {
+                break
+            }
+            *iter += 1;
+            leftover -= 1;
+        }
     }
-    (vec_org[..mid].to_vec(), vec_org[mid..].to_vec())
+
+    // extracting the sub vectors based on the before calculated lenghts in splitted_vec_lens
+    let mut current_index: usize = 0;
+    let mut results: Vec<Vec<File>> = vec![];
+    for i in 0..num_threads {
+        if let Some(&len) = splitted_vec_lens.get(i) {
+            if current_index + len > vec_org.len() {
+                panic!("Index out of bound when splitting vec_org")
+            }
+            results.push(vec_org[current_index..(current_index + len)].to_vec());
+            current_index += len;
+        }
+    }
+
+    results
 }
 
 pub fn exists_root_folder(root_folder: &Path, client: &NextcloudClient) -> Result<bool, Box<dyn Error>> {
@@ -111,7 +144,7 @@ pub fn exists_root_folder(root_folder: &Path, client: &NextcloudClient) -> Resul
 }
 
 // starts the uploads in 4 parallel threads
-pub fn threaded_upload(files: Vec<File>, client: NextcloudClient) -> Result<(), Box<io::Error>> {
+pub fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: usize) -> Result<(), Box<io::Error>> {
     // calculate the totat upload size
     let mut total_size: u64 = 0;
     for file in &files {
@@ -123,17 +156,7 @@ pub fn threaded_upload(files: Vec<File>, client: NextcloudClient) -> Result<(), 
     let shared_uploaded_size: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
 
     // split the original vec 'files' in 4 seperate vecs and pass each one of them to a seperate thread
-    let mut splitted_files: Vec<Vec<File>> = vec![];
-
-    let halfs = split_vec_to_vecs(files);
-    let mut quarters: Vec<(Vec<File>, Vec<File>)> = vec![];
-    quarters.push(split_vec_to_vecs(halfs.0));
-    quarters.push(split_vec_to_vecs(halfs.1));
-
-    for q in quarters {
-        splitted_files.push(q.0);
-        splitted_files.push(q.1);
-    }
+    let splitted_files: Vec<Vec<File>> = split_vec_to_vecs(files, num_threads);
 
     // print initial progress bar
     update_progress_bar(0, total_size);

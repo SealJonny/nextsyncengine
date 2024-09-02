@@ -88,7 +88,7 @@ fn travel_dir_dav(root: &mut Folder, client: &NextcloudClient) -> Result<(), Box
     Ok(())
 }
 
-pub fn upload_sorted(local_path: String, remote_path: String, depth: String, client: NextcloudClient, extractor: Extractor) -> Result<(), Box<dyn Error>> {
+pub fn upload_sorted(local_path: String, remote_path: String, depth: String, num_threads: usize, client: NextcloudClient, extractor: Extractor) -> Result<(), Box<dyn Error>> {
     // check if the root folder exists and if not ask the user if he wants to create it
     match common::exists_root_folder(Path::new(&remote_path), &client) {
         Ok(true) => {}
@@ -112,7 +112,7 @@ pub fn upload_sorted(local_path: String, remote_path: String, depth: String, cli
             get_remote_parent(&mut files, root, &client, &depth)?;
             println!("{}", "done".green());
 
-            common::threaded_upload(files, client)?;
+            common::threaded_upload(files, client, num_threads)?;
             Ok(())
         }
         

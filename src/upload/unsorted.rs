@@ -16,7 +16,7 @@ fn get_remote_parent(files: &mut Vec<File>, root_folder: PathBuf) {
 
 // Todo: implement keeping the original structure
 // uploads a folder to Nextcloud keeping the original structure
-pub fn upload_unsorted(local_path: String, remote_path: String, client: NextcloudClient, extractor: Extractor) -> Result<(), Box<dyn Error>> {
+pub fn upload_unsorted(local_path: String, remote_path: String, num_threads: usize, client: NextcloudClient, extractor: Extractor) -> Result<(), Box<dyn Error>> {
     // check if the root folder exists and if not ask the user if he wants to create it
     match common::exists_root_folder(Path::new(&remote_path), &client) {
         Ok(true) => {}
@@ -33,7 +33,7 @@ pub fn upload_unsorted(local_path: String, remote_path: String, client: Nextclou
             println!("{}", "done".green());
 
             get_remote_parent(&mut files, root_folder);
-            common::threaded_upload(files, client)?;
+            common::threaded_upload(files, client, num_threads)?;
             Ok(())
         }
         

@@ -4,6 +4,7 @@ mod filesystem;
 mod helpers;
 mod upload;
 
+use clap::builder::ValueParser;
 use nextcloud::NextcloudClient;
 use media::Extractor;
 use upload::sorted::upload_sorted;
@@ -66,6 +67,36 @@ fn main() {
     let client = NextcloudClient::new(server_url, username.clone(), password);
     let extractor = Extractor::new(exiftool);
 
+    let local_path_arg =
+        Arg::new("local_path")
+            .short('l')
+            .long("local_path")
+            .value_parser(clap::value_parser!(String))
+            .required(true)
+            .help("The path to the local folder that you want to upload");
+
+    let remote_path_arg = 
+        Arg::new("remote_path")
+            .short('r')
+            .long("remote_path")
+            .value_parser(clap::value_parser!(String))
+            .required(true)
+            .help("The path on your Nextcloud server where the folder will be uploaded");
+
+    let threads_arg =
+        Arg::new("threads")
+            .short('t')
+            .long("threads")
+            .value_parser(ValueParser::new(|s: &str| {
+                let value: usize = s.parse().map_err(|_| format!("{} isn't a valid number", s))?;
+                if value < 1 {
+                    return Err(format!("The number of threads must be at least 1, but '{}' was provided", value))
+                }
+                Ok(value)
+            }))
+            .default_value("3")
+            .help("Number of parallel uploading threads (must be 1 or more)");
+
     // parser for cli options
     let matches = Command::new("nextsyncengine")
         .version(env!("CARGO_PKG_VERSION"))
@@ -76,22 +107,8 @@ fn main() {
         .subcommand(
     Command::new("upload:sorted")
                 .about("Uploads files from the specified folder to Nextcloud, organizing them into a structured folder hierarchy")
-                .arg(
-                    Arg::new("local_path")
-                        .short('l')
-                        .long("local_path")
-                        .value_parser(clap::value_parser!(String))
-                        .required(true)
-                        .help("The path to the local folder that you want to upload"),
-                )
-                .arg(
-                    Arg::new("remote_path")
-                        .short('r')
-                        .long("remote_path")
-                        .value_parser(clap::value_parser!(String))
-                        .required(true)
-                        .help("The path on your Nextcloud server where the folder will be uploaded"),
-                )
+                .arg(local_path_arg.clone())
+                .arg(remote_path_arg.clone())
                 .arg(
                     Arg::new("depth")
                         .short('d')
@@ -100,26 +117,14 @@ fn main() {
                         .default_value("month")
                         .help("Sets the depth of the folder structure. Options are: year, month or day"),
                 )
+                .arg(threads_arg.clone())
         )
         .subcommand(
     Command::new("upload:unsorted")
                 .about("Uploads a local folder to Nextcloud recursively, placing all files directly in the specified root folder without preserving the local folder structure")
-                .arg(
-                    Arg::new("local_path")
-                        .short('l')
-                        .long("local_path")
-                        .value_parser(clap::value_parser!(String))
-                        .required(true)
-                        .help("The path to the local folder that you want to upload"),
-                )
-                .arg(
-                    Arg::new("remote_path")
-                        .short('r')
-                        .long("remote_path")
-                        .value_parser(clap::value_parser!(String))
-                        .required(true)
-                        .help("The path on your Nextcloud server where the folder will be uploaded"),
-                )
+                .arg(local_path_arg.clone())
+                .arg(remote_path_arg.clone())
+                .arg(threads_arg.clone())
         )
         .get_matches();
     
@@ -160,9 +165,10 @@ fn main() {
             let local_path = upload_matches.get_one::<String>("local_path").expect("--local_path is required").trim().to_string();
             let remote_path = upload_matches.get_one::<String>("remote_path").expect("--remote_path is required").trim().to_string();
             let depth = upload_matches.get_one::<String>("depth").expect("--depth was not set").trim().to_string();
+            let num_threads = upload_matches.get_one::<usize>("threads").expect("--threads was not set");
 
             // start the sorted upload of the folder at 'local_path' to 'remote_path'
-            match upload_sorted(local_path, remote_path, depth, client, extractor) {
+            match upload_sorted(local_path, remote_path, depth, *num_threads, client, extractor) {
                 Err(e) => error!("{}", e),
                 _ => {}
             }
@@ -172,8 +178,9 @@ fn main() {
             // extract the options for upload:unsorted
             let local_path = upload_matches.get_one::<String>("local_path").expect("required").trim().to_string();
             let remote_path = upload_matches.get_one::<String>("remote_path").expect("required").trim().to_string();
+            let num_threads = upload_matches.get_one::<usize>("threads").expect("--threads was not set");
 
-            match upload_unsorted(local_path, remote_path, client, extractor) {
+            match upload_unsorted(local_path, remote_path, *num_threads, client, extractor) {
                 Err(e) => error!("{}", e),
                 _ => {}
             }
