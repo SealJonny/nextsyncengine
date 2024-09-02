@@ -60,32 +60,24 @@ pub fn trave_dir_local(root_path: &Path, extractor: &Extractor) -> Result<Vec<Fi
 }
 
 // uploads a vec of files to nextcloud and updates the progress bar
-pub fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64, shared_uploaded_size: Arc<Mutex<u64>>) {
+pub fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64, shared_uploaded_size: Arc<Mutex<u64>>, shared_failed_files: Arc<Mutex<Vec<File>>>) {
     for file in files {
         let size = file.get_size();
         // uplaoding the current file to nextcloud
-        if let Err(e) = client.upload_file(file) {
+        if let Err(e) = client.upload_file(&file) {
+            // loading error and saving the file which could not be uploaded
             error!("{}", e);
-        } else {
-            // updating the progress bar
-            let mut uploaded_size = shared_uploaded_size.lock().unwrap();
-            *uploaded_size += size;
-            update_progress_bar(*uploaded_size, total_size);
+            let mut failed_files = shared_failed_files.lock().unwrap();
+            failed_files.push(file);
+            continue
         }
+
+        // updating the progress bar
+        let mut uploaded_size = shared_uploaded_size.lock().unwrap();
+        *uploaded_size += size;
+        update_progress_bar(*uploaded_size, total_size);
     }
 }
-
-// // splits a vector into two new vectors each containing one half of the original vector
-// pub fn split_vec_to_vecs(vec_org: Vec<File>) -> (Vec<File>, Vec<File>) {
-//     let mid: usize;
-//     // determine the mid index of the vec
-//     if vec_org.len() % 2 == 0 {
-//         mid = vec_org.len() / 2;
-//     } else {
-//         mid = (vec_org.len() + 1) / 2;
-//     }
-//     (vec_org[..mid].to_vec(), vec_org[mid..].to_vec())
-// }
 
 // splits a vector into two new vectors each containing one half of the original vector
 pub fn split_vec_to_vecs(vec_org: Vec<File>, num_threads: usize) -> Vec<Vec<File>> {
@@ -154,6 +146,7 @@ pub fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: u
     // create a shared nextcloud_client and a counter to track the upload progress and update the progress bar accordingly 
     let shared_client = Arc::new(client);
     let shared_uploaded_size: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+    let shared_failed_files: Arc<Mutex<Vec<File>>> = Arc::new(Mutex::new(vec![]));
 
     // split the original vec 'files' in 4 seperate vecs and pass each one of them to a seperate thread
     let splitted_files: Vec<Vec<File>> = split_vec_to_vecs(files, num_threads);
@@ -166,8 +159,9 @@ pub fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: u
     for v in splitted_files {
         let uploaded_size = Arc::clone(&shared_uploaded_size);
         let client_clone = Arc::clone(&shared_client);
+        let failed_files_clone = Arc::clone(&shared_failed_files);
         threads.push(std::thread::spawn(move || {
-        upload_files(v, client_clone, total_size, uploaded_size);
+        upload_files(v, client_clone, total_size, uploaded_size, failed_files_clone);
         }));
     }
 

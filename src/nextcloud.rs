@@ -6,6 +6,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use xml::reader::{EventReader, XmlEvent};
+use reqwest::StatusCode;
+use log::error;
 
 use crate::filesystem;
 
@@ -62,7 +64,7 @@ impl NextcloudClient {
     }
     
     // uploads a file to the specified location on a nextcloud server
-    pub fn upload_file(&self, file: filesystem::File) -> Result<(), Box<dyn Error>> {
+    pub fn upload_file(&self, file: &filesystem::File) -> Result<(), Box<dyn Error>> {
         // parse the file content into a vector needed to send the content via http request
         let local_path = file.get_local_path();
         let mtime = file.get_mtime();
@@ -87,12 +89,9 @@ impl NextcloudClient {
             .body(file_content)
             .send()?;
 
-        // checking the responses status code and returning an error if it is not between 200-299
-        if let Err(e) = response.error_for_status() {
-            Err(Box::new(e))
-        } else {
-            Ok(())
-        }
+        // checking reponse for errors
+        self.evaluate_response_for_error(&response)
+
     }
     
     // lists a folder
@@ -121,16 +120,16 @@ impl NextcloudClient {
             .body(prop)
             .send()?;
 
-        // checking the responses status code and returning an error if it is not between 200-299
-        if let Err(e) = response.error_for_status_ref() {
-            Err(Box::new(e))
-        } else {
-            let response = response.text()?;
-            let mut folders = self.extract_folder_xml(&response)?;
-            folders.remove(0);
-            Ok(folders)
+        // checking the status code for erros
+        if let Err(e) = self.evaluate_response_for_error(&response) {
+            return Err(e)
         }
         
+        // remove the root folder from the result
+        let response = response.text()?;
+        let mut folders = self.extract_folder_xml(&response)?;
+        folders.remove(0);
+        Ok(folders)
     }
 
     // queries the nextcloud sever if a folder at 'path' exists and returns the result
@@ -156,15 +155,13 @@ impl NextcloudClient {
             return Ok(true)
         }
 
-        // if the status code did not match the codes above, try raising an error for it
-        // if raising an error fails the programm will panic and terminate
-        if let Err(e) = response.error_for_status_ref() {
-            Err(Box::new(e))
-        } else {
-            println!("{}", response.status());
-            panic!("exists_folder returned a value which was not expected!")
+        // checking the responses for errors, if none are found the programm will be terminated
+        // because the request returned an unexpected status code
+        if let Err(e) = self.evaluate_response_for_error(&response) {
+            return Err(e)
         }
-
+        error!("exists_folder returned a unhandled response code!");
+        panic!()
     }
 
     // creates a folder on the nextcloud server at the location 'path'
@@ -182,8 +179,29 @@ impl NextcloudClient {
             .basic_auth(&self.username, Some(&self.password))
             .send()?;
 
-        // checking the responses status code and returning an error if it is not between 200-299
-        if let Err(e) = response.error_for_status() {
+        self.evaluate_response_for_error(&response)
+    }
+
+    // evaluates the given response and determines if it has a fatal error, none fatal error or no error
+    // if a fatal error occures, the programm will panic
+    fn evaluate_response_for_error(&self, response: &reqwest::blocking::Response) -> Result<(), Box<dyn Error>> {
+        // checking response if a fatal error occured
+        if response.status() == StatusCode::INTERNAL_SERVER_ERROR
+            || response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::SERVICE_UNAVAILABLE 
+            || response.status() == StatusCode::GATEWAY_TIMEOUT
+            || response.status() == StatusCode::INSUFFICIENT_STORAGE
+            || response.status() == StatusCode::BAD_REQUEST
+            || response.status() == StatusCode::UNAUTHORIZED
+            || response.status() == StatusCode::FORBIDDEN {
+                if let Err(e) = response.error_for_status_ref() {
+                    error!("Programm terminated because of a unrecoverable response from the server: {}", e);
+                }
+                panic!()
+            }
+
+        // checking response if a none fatal error occured
+        if let Err(e) = response.error_for_status_ref() {
             Err(Box::new(e))
         } else {
             Ok(())

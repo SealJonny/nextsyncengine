@@ -67,6 +67,7 @@ fn main() {
     let client = NextcloudClient::new(server_url, username.clone(), password);
     let extractor = Extractor::new(exiftool);
 
+    // common args between upload:sorted and upload:unsorted
     let local_path_arg =
         Arg::new("local_path")
             .short('l')
@@ -89,13 +90,13 @@ fn main() {
             .long("threads")
             .value_parser(ValueParser::new(|s: &str| {
                 let value: usize = s.parse().map_err(|_| format!("{} isn't a valid number", s))?;
-                if value < 1 {
-                    return Err(format!("The number of threads must be at least 1, but '{}' was provided", value))
+                if value < 1 || value > 6{
+                    return Err(format!("The number of threads must be between 1 and 6, but '{}' was provided", value))
                 }
                 Ok(value)
             }))
             .default_value("3")
-            .help("Number of parallel uploading threads (must be 1 or more)");
+            .help("Number of parallel uploading threads (must be between 1 and 6)");
 
     // parser for cli options
     let matches = Command::new("nextsyncengine")
