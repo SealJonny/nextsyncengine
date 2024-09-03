@@ -33,8 +33,7 @@ pub fn upload_unsorted(local_path: String, remote_path: String, num_threads: usi
             println!("{}", "done".green());
 
             get_remote_parent(&mut files, root_folder);
-            common::threaded_upload(files, client, num_threads)?;
-            Ok(())
+            return common::start_upload(files, client, num_threads)
         }
         
         // passing error to caller function

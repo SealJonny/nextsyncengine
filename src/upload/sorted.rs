@@ -112,8 +112,7 @@ pub fn upload_sorted(local_path: String, remote_path: String, depth: String, num
             get_remote_parent(&mut files, root, &client, &depth)?;
             println!("{}", "done".green());
 
-            common::threaded_upload(files, client, num_threads)?;
-            Ok(())
+            common::start_upload(files, client, num_threads)
         }
         
         // passing error to caller function

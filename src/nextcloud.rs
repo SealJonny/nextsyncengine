@@ -10,7 +10,9 @@ use reqwest::StatusCode;
 use log::error;
 
 use crate::filesystem;
+use crate::helpers;
 
+#[derive(Clone)]
 pub struct NextcloudClient {
     url_server: String,
     url_dav: String,
@@ -75,7 +77,7 @@ impl NextcloudClient {
         // extract the file name {from local_path and build the final url
         let url: String;
         if let Some(file_name) = local_path.file_name().and_then(|name| name.to_str()) {
-            let remote_parent = self.path_to_str(remote_parent)?;
+            let remote_parent = helpers::path_to_str(remote_parent)?;
             url = self.build_url(vec![remote_parent.as_str(), file_name])
 
         } else {
@@ -108,7 +110,7 @@ impl NextcloudClient {
         "#;
 
         let url: String;
-        let path = self.path_to_str(path)?;
+        let path = helpers::path_to_str(path)?;
         url = self.build_url(vec![path.as_str()]);
 
         let propfind = reqwest::Method::from_str("PROPFIND")?;
@@ -137,7 +139,7 @@ impl NextcloudClient {
 
         // build the final url appending path to url_server
         let url: String;
-        let path = self.path_to_str(path)?;
+        let path = helpers::path_to_str(path)?;
         url = self.build_url(vec![path.as_str()]);
 
         // query the server if this folder exists and returnig the erros directly to the caller of this method
@@ -168,7 +170,7 @@ impl NextcloudClient {
     pub fn create_folder(&self, path: &Path) -> Result<(), Box<dyn Error>> {
         // build url containing the dav url and the location of the new folder
         let url: String;
-        let path = self.path_to_str(path)?;
+        let path = helpers::path_to_str(path)?;
         url = self.build_url(vec![path.as_str()]);
         
         // creating the http method
@@ -220,15 +222,6 @@ impl NextcloudClient {
         }
         current_url
 
-    }
-
-    // convertes a &Path to &str
-    fn path_to_str(&self, path: &Path) -> Result<String, Box<dyn Error>> {
-        if let Some(path_str) = path.to_str() {
-            Ok(path_str.to_string())
-        } else {
-            Err(Box::new(io::Error::new(io::ErrorKind::InvalidInput, "path could not be converted to string!")))
-        }
     }
 
     // extracts the folder from xml data

@@ -1,5 +1,7 @@
 use std::io;
 use std::io::Write;
+use std::error::Error;
+use std::path::Path;
 
 
 pub fn progress_bar(iteration: u64, total: u64, prefix: &str, suffix: &str) {
@@ -14,5 +16,14 @@ pub fn progress_bar(iteration: u64, total: u64, prefix: &str, suffix: &str) {
 
     if iteration == total {
         println!();
+    }
+}
+
+// convertes a &Path to &str
+pub fn path_to_str(path: &Path) -> Result<String, Box<dyn Error>> {
+    if let Some(path_str) = path.to_str() {
+        Ok(path_str.to_string())
+    } else {
+        Err(Box::new(io::Error::new(io::ErrorKind::InvalidInput, "path could not be converted to string!")))
     }
 }
