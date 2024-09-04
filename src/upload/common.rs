@@ -47,7 +47,7 @@ fn save_failed_files_txt(failed_files: &Vec<File>) -> Result<(), Box<io::Error>>
 
         // go throught the vec of failed files and write all paths to the file
         for f in failed_files {
-            failed_upload_txt.write_all(format!("{:?}", f.get_local_path()).as_bytes())?;
+            failed_upload_txt.write_all(format!("{:?}\n", f.get_local_path()).as_bytes())?;
         }
         println!("{}", format!("You can find the paths of the files which failed to upload at {:?}", home_dir.join("nextsyncengine-failed_uploads.txt")).red());
         Ok(())
@@ -80,7 +80,8 @@ fn split_vec_to_vecs(vec_org: Vec<File>, num_threads: usize) -> Vec<Vec<File>> {
     for i in 0..num_threads {
         if let Some(&len) = splitted_vec_lens.get(i) {
             if current_index + len > vec_org.len() {
-                panic!("Index out of bound when splitting vec_org")
+                error!("Index out of bound when splitting vec_org");
+                panic!()
             }
             results.push(vec_org[current_index..(current_index + len)].to_vec());
             current_index += len;
