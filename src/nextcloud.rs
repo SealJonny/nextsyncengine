@@ -6,7 +6,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use xml::reader::{EventReader, XmlEvent};
-use reqwest::StatusCode;
 use log::error;
 
 use crate::filesystem;
@@ -184,30 +183,12 @@ impl NextcloudClient {
         self.evaluate_response_for_error(&response)
     }
 
-    // evaluates the given response and determines if it has a fatal error, none fatal error or no error
-    // if a fatal error occures, the programm will panic
+    // evaluates the given response and determines if it has a error
     fn evaluate_response_for_error(&self, response: &reqwest::blocking::Response) -> Result<(), Box<dyn Error>> {
-        // checking response if a fatal error occured
-        if response.status() == StatusCode::INTERNAL_SERVER_ERROR
-            || response.status() == StatusCode::BAD_GATEWAY
-            || response.status() == StatusCode::SERVICE_UNAVAILABLE 
-            || response.status() == StatusCode::GATEWAY_TIMEOUT
-            || response.status() == StatusCode::INSUFFICIENT_STORAGE
-            || response.status() == StatusCode::BAD_REQUEST
-            || response.status() == StatusCode::UNAUTHORIZED
-            || response.status() == StatusCode::FORBIDDEN {
-                if let Err(e) = response.error_for_status_ref() {
-                    error!("Programm terminated because of a unrecoverable response from the server: {}", e);
-                }
-                panic!()
-            }
-
-        // checking response if a none fatal error occured
         if let Err(e) = response.error_for_status_ref() {
-            Err(Box::new(e))
-        } else {
-            Ok(())
+            return Err(Box::new(e))
         }
+        Ok(())
     }
 
     // builds the url from the attribute 'url_server' and the given extensions

@@ -6,6 +6,7 @@ use log::error;
 use colored::*;
 use dirs::home_dir;
 use std::io::Write;
+use reqwest::StatusCode;
 
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -184,7 +185,7 @@ pub fn start_upload(files: Vec<File>, client: NextcloudClient, num_threads: usiz
 }
 
 // starts the uploads in 4 parallel threads
-fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: usize) -> Result<Vec<File>, Box<io::Error>> {
+fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: usize) -> Result<Vec<File>, Box<dyn Error>> {
     // calculate the totat upload size
     let mut total_size: u64 = 0;
     for file in &files {
@@ -203,21 +204,28 @@ fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: usize
     update_progress_bar(0, total_size);
 
     // spawning the uploading threads
-    let mut threads: Vec<JoinHandle<()>> = vec![];
+    let mut threads: Vec<JoinHandle<Result<(), Box<reqwest::Error>>>> = vec![];
     for v in splitted_files {
         let uploaded_size = Arc::clone(&shared_uploaded_size);
         let client_clone = Arc::clone(&shared_client);
         let failed_files_clone = Arc::clone(&shared_failed_files);
         threads.push(std::thread::spawn(move || {
-        upload_files(v, client_clone, total_size, uploaded_size, failed_files_clone);
+            upload_files(v, client_clone, total_size, uploaded_size, failed_files_clone)
         }));
     }
 
     // joining the uploading threads
     for thread in threads {
         match thread.join() {
-            Err(_) => return Err(Box::new(io::Error::new(io::ErrorKind::Other, "Failed to join upload threads!"))),
-            _ => {}
+            Ok(Ok(())) => {}
+            
+            // handle a fatal error by writing the failed uploads to a .txt file and returning the error
+            Ok(Err(e)) => {
+                let failed_files = shared_failed_files.lock().unwrap().to_owned();
+                save_failed_files_txt(&failed_files)?;
+                return Err(e)
+            }
+            Err(_e) => return Err(Box::new(io::Error::new(io::ErrorKind::Other, "Failed to join upload threads!"))),
         };
     }
     let failed_files = shared_failed_files.lock().unwrap().to_owned();
@@ -225,16 +233,40 @@ fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: usize
 }
 
 // uploads a vec of files to nextcloud and updates the progress bar
-fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64, shared_uploaded_size: Arc<Mutex<u64>>, shared_failed_files: Arc<Mutex<Vec<File>>>) {
-    for file in files {
+fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64, shared_uploaded_size: Arc<Mutex<u64>>, shared_failed_files: Arc<Mutex<Vec<File>>>) -> Result<(), Box<reqwest::Error>> {
+    for (index, file) in files.iter().enumerate() {
         let size = file.get_size();
         // uplaoding the current file to nextcloud
         if let Err(e) = client.upload_file(&file) {
-            // loading error and saving the file which could not be uploaded
-            error!("{}", e);
-            let mut failed_files = shared_failed_files.lock().unwrap();
-            failed_files.push(file);
-            continue
+            // determine if the http error is fatal or not
+            if let Some(http_err) = e.downcast_ref::<reqwest::Error>() {
+                if let Some(status) = http_err.status() {
+                    match status {
+                        StatusCode::BAD_GATEWAY |
+                        StatusCode::SERVICE_UNAVAILABLE |
+                        StatusCode::GATEWAY_TIMEOUT |
+                        StatusCode::INSUFFICIENT_STORAGE |
+                        StatusCode::BAD_REQUEST |
+                        StatusCode::UNAUTHORIZED |
+                        StatusCode::FORBIDDEN  => {
+                            // push all remaining files into failed_files and terminate upload process by returning the error
+                            let mut failed_files = shared_failed_files.lock().unwrap();
+                            for i in index..files.len() {
+                                if let Some(f) = files.get(i) {
+                                    failed_files.push(f.clone());
+                                }
+                            }
+                            return Err(e.downcast::<reqwest::Error>().unwrap())
+                        }
+                        _ => {}
+                    }
+                }
+                // log the none fatal error and push the failed file to failed_files
+                error!("{}", e);
+                let mut failed_files = shared_failed_files.lock().unwrap();
+                failed_files.push(file.clone());
+                continue
+            }
         }
 
         // updating the progress bar
@@ -242,4 +274,5 @@ fn upload_files(files: Vec<File>, client: Arc<NextcloudClient>, total_size: u64,
         *uploaded_size += size;
         update_progress_bar(*uploaded_size, total_size);
     }
+    Ok(())
 }
