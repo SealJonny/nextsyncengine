@@ -5,7 +5,7 @@ use std::fs;
 use log::error;
 use colored::*;
 use dirs::home_dir;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use reqwest::StatusCode;
 
 use std::sync::{Arc, Mutex};
@@ -48,9 +48,11 @@ fn save_failed_files_txt(failed_files: &Vec<File>) -> Result<(), Box<io::Error>>
 
         // go throught the vec of failed files and write all paths to the file
         for f in failed_files {
-            failed_upload_txt.write_all(format!("{:?}\n", f.get_local_path()).as_bytes())?;
+            if let Some(local_path) = f.get_local_path().to_str() {
+                failed_upload_txt.write_all(format!("{}\n", local_path).as_bytes())?;
+            }
         }
-        println!("{}", format!("You can find the paths of the files which failed to upload at {:?}", home_dir.join("nextsyncengine-failed_uploads.txt")).red());
+        println!("\n{}", format!("You can find the paths of the files which failed to upload at {:?}", home_dir.join("nextsyncengine-failed_uploads.txt")).red());
         Ok(())
     } else {
         Err(Box::new(io::Error::new(io::ErrorKind::NotFound, "Could not locate the users home directory!")))
@@ -92,8 +94,35 @@ fn split_vec_to_vecs(vec_org: Vec<File>, num_threads: usize) -> Vec<Vec<File>> {
     results
 }
 
+// wrapper for travel_dir_local() and read_files_from_file
+pub fn get_files_for_upload(path: &Path, folder_or_file: bool, extractor: &Extractor) -> Result<Vec<File>, Box<dyn Error>> {
+    // determine how the user provided the info which files should be uploaded
+    let from_folder = true;
+    if folder_or_file == from_folder {
+        return travel_dir_local(path, extractor)
+    }
+    read_files_from_file(path, extractor)
+}
+
+// creates a list of files from a text file containing local filesystem paths
+fn read_files_from_file(path: &Path, extractor: &Extractor) -> Result<Vec<File>, Box<dyn Error>> {
+    // create the file and its reader
+    let mut files: Vec<File> = vec![];
+    let file = fs::File::open(path)?;
+    let reader = BufReader::new(file);
+
+    // read the file line for line and create Files based on the local paths contained in the text file
+    for line in reader.lines() {
+        let line = line?;
+        let file_path = Path::new(line.trim());
+        let mtime = extractor.extract_date_time(file_path)?;
+        files.push(File::new(file_path, mtime));
+    }
+    Ok(files)
+}
+
 // travels through the local folder and recursively stores all files in a vector
-pub fn trave_dir_local(root_path: &Path, extractor: &Extractor) -> Result<Vec<File>, Box<dyn Error>> {
+pub fn travel_dir_local(root_path: &Path, extractor: &Extractor) -> Result<Vec<File>, Box<dyn Error>> {
     let mut paths_folder: Vec<PathBuf> = Vec::new();
     paths_folder.push(root_path.to_path_buf());
 
@@ -215,20 +244,25 @@ fn threaded_upload(files: Vec<File>, client: NextcloudClient, num_threads: usize
     }
 
     // joining the uploading threads
+    let mut err: Option<Box<reqwest::Error>> = None;
     for thread in threads {
         match thread.join() {
             Ok(Ok(())) => {}
             
             // handle a fatal error by writing the failed uploads to a .txt file and returning the error
             Ok(Err(e)) => {
-                let failed_files = shared_failed_files.lock().unwrap().to_owned();
-                save_failed_files_txt(&failed_files)?;
-                return Err(e)
+                err = Some(e);
             }
             Err(_e) => return Err(Box::new(io::Error::new(io::ErrorKind::Other, "Failed to join upload threads!"))),
         };
     }
     let failed_files = shared_failed_files.lock().unwrap().to_owned();
+
+    // if the threads returned a http error, pass it to the caller function
+    if let Some(e) = err {
+        save_failed_files_txt(&failed_files)?;
+        return Err(e)
+    }
     Ok(failed_files)
 }
 
