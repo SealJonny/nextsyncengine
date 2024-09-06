@@ -78,6 +78,7 @@ Type `./path/to/nextsyncengine` in your terminal (may need sudo if procces.log i
 |:---           |:--- |
 |upload:sorted  |test |
 |upload:unsorted|test |
+
  **⚠️Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
 
 
