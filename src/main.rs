@@ -212,7 +212,7 @@ fn main() {
             let depth = upload_matches.get_one::<String>("depth").expect("--depth was not set").trim().to_string();
             let num_threads = upload_matches.get_one::<usize>("threads").expect("--threads was not set");
 
-            // start the sorted upload of the folder at 'local_path' to 'remote_path'
+            // start the sorted upload of the files from 'path_upload' to 'remote_path'
             match upload_sorted(path_upload, from_folder, remote_path, depth, *num_threads, client, extractor) {
                 Err(e) => error!("{}", e),
                 _ => {}
@@ -238,7 +238,8 @@ fn main() {
                 };
             let remote_path = upload_matches.get_one::<String>("remote_path").expect("required").trim().to_string();
             let num_threads = upload_matches.get_one::<usize>("threads").expect("--threads was not set");
-
+            
+            // start the unsorted upload of the files from 'path_upload' to 'remote_path'
             match upload_unsorted(path_upload, from_folder, remote_path, *num_threads, client, extractor) {
                 Err(e) => error!("{}", e),
                 _ => {}

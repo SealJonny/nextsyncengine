@@ -36,15 +36,14 @@ NextSyncEngine is a powerful Rust-based CLI tool designed to streamline file upl
 
 - **Directory-Based Upload**: Seamlessly upload files from a local directory to Nextcloud while preserving a logical folder hierarchy. The tool automatically sorts files into nested folders organized by year, month, and day.
 
-
 - **Unsorted Upload Option**: Alternatively, upload files in an unsorted manner, where files are uploaded directly to the specified folder without any directory restructuring.
+
+- **Fall Back Upload**: In the event that one or more files fail to upload, you will be prompted to retry the upload process for the affected files. Should a critical error occur during the upload, the batch process will terminate, and the local paths of any remaining files will be recorded in a log file: `~/nextsyncengine_failed-uploads.txt` on Linux or `C:\Users\{username}\nextsyncengine_failed-uploads.txt` on Windows. This log can be used to retry uploads at a later time, for example, when the server is no longer in maintenance mode (have a look at the Usage doc).
 
 - **Error Logging**: Detailed logging of any errors or warnings during execution is available in `process.log`, making it easier to troubleshoot issues.
 
 ### 🔐 Credentials & Settings
 The credential and settings  are stored in a `.env` file. Replace the placeholders with your values.
-
-**Ensure that the server url does not have a trailing '/'!**
 
 ```plaintext
 NC_USERNAME=your_nextcloud_username
@@ -74,6 +73,11 @@ mv /path/to/.env .
 ### ⚙️ Usage
 Type `./path/to/nextsyncengine` in your terminal (may need sudo if procces.log is owned by root) this will print out all available commands and options with a short explanation.
 
+#### List of Commands
+|Command        |Usage|
+|:---:          |:---:|
+|upload:sorted  |test |
+|upload:unsorted|test |
  **⚠️Important: Do NOT change or delete the local and remote root folder or their content while the application is running!**
 
 
