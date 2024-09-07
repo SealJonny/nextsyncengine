@@ -1,4 +1,5 @@
 use reqwest::blocking::Client;
+use std::time::Duration;
 use std::{fs::File, vec};
 use std::io::Read;
 use std::error::Error;
@@ -31,7 +32,10 @@ impl NextcloudClient {
             url_dav: url_dav,
             username: username,
             password: password,
-            client: Client::new()
+            client: Client::builder()
+                .timeout(Duration::from_secs(2700))
+                .build()
+                .unwrap()
         }
     }
 
