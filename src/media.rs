@@ -79,7 +79,7 @@ impl<'a> Extractor<'a> {
     // extracts the modification date using the exiftool binary
     fn extract_date_time_exif(&self, path: &Path) -> Result<i64, Box<dyn std::error::Error>> {
         // convert path to str and execute exiftool bash command to extract the mtime from the file
-        let result: String;
+        let result: (String, String);
         
         if let Some(path_str) = path.to_str() {
             #[cfg(unix)]
@@ -98,15 +98,17 @@ impl<'a> Extractor<'a> {
 
             // convert the ouput to a string and remove trailing whitespaces, line breackers or indents
             let stdout = String::from_utf8_lossy(&output.stdout);
-            result = stdout.trim_end().to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            result = (stdout.trim_end().to_string(), stderr.trim_end().to_string());
         } else {
             return Err(Box::new(io::Error::new(io::ErrorKind::Other, "Failed to convert path to &str!")))
         }
         // converting the extracted date time string into a unix timestamp
         let format = "%Y:%m:%d %H:%M:%S";
-        let unix_mtime = NaiveDateTime::parse_from_str(&result, format)?;
-
-        Ok(unix_mtime.and_utc().timestamp())
+        match NaiveDateTime::parse_from_str(&result.0, format) {
+            Ok(mtime) => Ok(mtime.and_utc().timestamp()),
+            Err(_e) => Err(Box::new(io::Error::new(io::ErrorKind::Other, result.1)))
+        }
     }
 
 }
