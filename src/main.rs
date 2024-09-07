@@ -35,13 +35,23 @@ fn init_logger(config_folder: &Path) {
 }
 
 fn main() {
+    // get the current working directory
+    let working_dir: PathBuf;
+    match env::current_dir() {
+        Ok(val) => working_dir = val,
+        Err(e) => {
+            error!("Could not determine the current working directory: {}", e);
+            panic!()
+        }
+    }
+    
     // get parent folder of executable
     let mut exe_path: PathBuf;
     match env::current_exe() {
         Ok(val) => exe_path = val,
         Err(e) => {
             error!("{}", e);
-            return
+            panic!()
         }
     }
     exe_path.pop();
@@ -194,23 +204,13 @@ fn main() {
             // extract the options for upload:sorted
             let local_path = upload_matches.get_one::<String>("local");
             let file_path = upload_matches.get_one::<String>("file");
-            
-            
-            let mut from_folder = true;
-            let path_upload: String = 
-                if let Some(local) = local_path {
-                    local.to_string()
-                } else if let Some(file) = file_path {
-                    from_folder = false;
-                    file.to_string()
-                } else {
-                    error!("--local or --file is requried");
-                    panic!()
-                };
-            
             let remote_path = upload_matches.get_one::<String>("remote").expect("--remote is required").trim().to_string();
             let depth = upload_matches.get_one::<String>("depth").expect("--depth was not set").trim().to_string();
             let num_threads = upload_matches.get_one::<usize>("threads").expect("--threads was not set");
+
+            // determine if user chose local arg or file arg
+            let mut path_upload = String::new();
+            let from_folder = helpers::get_path_folder_or_file(&mut path_upload, local_path, file_path, &working_dir);
 
             // start the sorted upload of the files from 'path_upload' to 'remote_path'
             match upload_sorted(path_upload, from_folder, remote_path, depth, *num_threads, client, extractor) {
@@ -223,21 +223,12 @@ fn main() {
             // extract the options for upload:unsorted
             let local_path = upload_matches.get_one::<String>("local");
             let file_path = upload_matches.get_one::<String>("file");
-            
-            
-            let mut from_folder = true;
-            let path_upload: String = 
-                if let Some(local) = local_path {
-                    local.to_string()
-                } else if let Some(file) = file_path {
-                    from_folder = false;
-                    file.to_string()
-                } else {
-                    error!("--local or --file is requried");
-                    panic!()
-                };
             let remote_path = upload_matches.get_one::<String>("remote").expect("--remote is required").trim().to_string();
             let num_threads = upload_matches.get_one::<usize>("threads").expect("--threads was not set");
+
+            // determine if user chose local arg or file arg
+            let mut path_upload = String::new();
+            let from_folder = helpers::get_path_folder_or_file(&mut path_upload, local_path, file_path, &working_dir);
             
             // start the unsorted upload of the files from 'path_upload' to 'remote_path'
             match upload_unsorted(path_upload, from_folder, remote_path, *num_threads, client, extractor) {

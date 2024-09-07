@@ -2,6 +2,7 @@ use std::io;
 use std::io::Write;
 use std::error::Error;
 use std::path::Path;
+use log::error;
 
 
 pub fn progress_bar(iteration: u64, total: u64, prefix: &str, suffix: &str) {
@@ -26,4 +27,34 @@ pub fn path_to_str(path: &Path) -> Result<String, Box<dyn Error>> {
     } else {
         Err(Box::new(io::Error::new(io::ErrorKind::InvalidInput, "path could not be converted to string!")))
     }
+}
+
+// determines the path to the folder containing the files or a file containing the paths to the files which will be uploaded
+// returning whether the path points to the folder a the file
+pub fn get_path_folder_or_file(path_upload: &mut String, local_path: Option<&String>, file_path: Option<&String>, working_dir: &Path) -> bool {
+    let mut from_folder = true;
+    if let Some(local) = local_path {
+        // resolving local to a absolute path
+        let combinded_path = working_dir.join(&local);
+        let resolved_path = match combinded_path.canonicalize() {
+            Ok(absolute_path) => absolute_path.to_str().unwrap().to_string(),
+            Err(e) => {
+                error!("Failed resolving {} to an absolute path", e);
+                String::new()
+            }
+        };
+        // terminate programm if local could not be resolved to a absolute path
+        if resolved_path.is_empty() {
+            panic!()
+        }
+        *path_upload = resolved_path;
+    } else if let Some(file) = file_path {
+        from_folder = false;
+        *path_upload = file.to_string()
+    } else {
+        error!("--local or --file is requried");
+        panic!()
+    };
+
+    from_folder
 }
