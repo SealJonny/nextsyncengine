@@ -29,6 +29,15 @@ pub fn path_to_str(path: &Path) -> Result<String, Box<dyn Error>> {
     }
 }
 
+// If the path starts with \\?\, remove it
+fn remove_extended_prefix(path: String) -> String {
+    if path.starts_with(r"\\?\") {
+        path.trim_start_matches(r"\\?\").to_string()
+    } else {
+        path
+    }
+}
+
 // determines the path to the folder containing the files or a file containing the paths to the files which will be uploaded
 // returning whether the path points to the folder a the file
 pub fn get_path_folder_or_file(path_upload: &mut String, local_path: Option<&String>, file_path: Option<&String>, working_dir: &Path) -> bool {
@@ -37,7 +46,10 @@ pub fn get_path_folder_or_file(path_upload: &mut String, local_path: Option<&Str
         // resolving local to a absolute path
         let combinded_path = working_dir.join(&local);
         let resolved_path = match combinded_path.canonicalize() {
-            Ok(absolute_path) => absolute_path.to_str().unwrap().to_string(),
+            Ok(absolute_path) => {
+                let absolute_path = remove_extended_prefix(absolute_path.to_str().unwrap().to_string());
+                absolute_path
+            }
             Err(e) => {
                 error!("Failed resolving {} to an absolute path", e);
                 String::new()
