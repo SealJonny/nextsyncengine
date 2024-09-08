@@ -82,7 +82,7 @@ Allows you to upload files from a local folder and its sub folders to a folder s
 |threads      |-t\|--threads &lt;threads&gt;            |Lets you control the number of threads used to upload the files. The value must be between 1 and 6. |3              |
 
 #### upload:unsorted
-Allows you to upload files from a local folder and its sub folders to Nextcloud while getting rid of the local sub folder.
+Allows you to upload files from a local folder and its sub folders to Nextcloud while getting rid of the original folder structure.
 |Argument     |Option                                   |Usage                                                                                                |Default Value  |
 |:---         |:---                                     |:---                                                                                                 |:---           |
 |local        |-l\|--local &lt;local&gt;                |Path to a local folder containing the files you want to upload.                                      |no value       |

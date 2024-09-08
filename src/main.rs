@@ -159,7 +159,7 @@ fn main() {
         )
         .subcommand(
     Command::new("upload:unsorted")
-                .about("Allows you to upload files from a local folder and its sub folders to Nextcloud while getting rid of the local sub folder.")
+                .about("Allows you to upload files from a local folder and its sub folders to Nextcloud while getting rid of the original folder structure.")
                 .arg(local_arg.clone())
                 .arg(file_arg.clone())
                 .arg(remote_arg.clone())
