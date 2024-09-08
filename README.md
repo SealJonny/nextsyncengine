@@ -72,7 +72,7 @@ mv /path/to/.env .
 
 ### ⚙️ Commands
 #### upload:sorted
-Allows you to upload files from a local folder and its sub folders to a folder structure orginazied by date on Nextcloud.
+Allows you to upload files from a local folder and its sub folders to a folder structure organized by date on Nextcloud.
 |Argument     |Option                                   |Usage                                                                                                |Default Value  |
 |:---         |:---                                     |:---                                                                                                 |:---           |
 |local        |-l\|--local &lt;local&gt;                |Path to a local folder containing the files you want to upload.                                      |no value       |

@@ -142,7 +142,7 @@ fn main() {
         .propagate_version(true)
         .subcommand(
     Command::new("upload:sorted")
-                .about("Uploads files from the specified folder to Nextcloud, organizing them into a structured folder hierarchy")
+                .about("Allows you to upload files from a local folder and its sub folders to a folder structure organized by date on Nextcloud.")
                 .arg(local_arg.clone())
                 .arg(file_arg.clone())
                 .arg(remote_arg.clone())
@@ -159,7 +159,7 @@ fn main() {
         )
         .subcommand(
     Command::new("upload:unsorted")
-                .about("Uploads a local folder to Nextcloud recursively, placing all files directly in the specified root folder without preserving the local folder structure")
+                .about("Allows you to upload files from a local folder and its sub folders to Nextcloud while getting rid of the local sub folder.")
                 .arg(local_arg.clone())
                 .arg(file_arg.clone())
                 .arg(remote_arg.clone())
