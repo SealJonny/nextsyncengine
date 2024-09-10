@@ -55,8 +55,9 @@ EXIFTOOL=/path/to/exiftool/binary
 ### 🔧 Installation
 Either download the pre compiled binary from the latest release or compile the binary yourself:
 ```bash
-git clone git@github.com:SealJonny/nextsyncengine.git
+git clone https://github.com/SealJonny/nextsyncengine.git
 cd nextsyncengine
+cargo test
 cargo build --release
 ```
 You'll find the compiled binary at `path/to/nextsyncengine/target/release/nextsyncengine`.
