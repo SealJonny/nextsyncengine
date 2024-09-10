@@ -279,11 +279,12 @@ impl NextcloudClient {
 mod tests {
     use super::*;
     use tempfile::tempdir;
+    use core::panic;
     use std::io::Write;
 
     #[test]
     fn test_upload_file_success() {
-        // Create a mock for the PUT request to simulate the Nextcloud server
+        // create a mock for the PUT request to simulate the Nextcloud server
         let mut mock = mockito::Server::new();
         let server_url = mock.url();
         mock
@@ -292,29 +293,29 @@ mod tests {
             .with_header("Content-Type", "application/xml")
             .create();
     
-        // Create a temporary directory and file to simulate a file upload
+        // create a temporary directory and file to simulate a file upload
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test_file.txt");
         let mut temp_file = StdFile::create(&file_path).unwrap();
         writeln!(temp_file, "This is a test file.").unwrap();
     
-        // Create a mock Nextcloud file struct
+        // create a mock Nextcloud file struct
         let mut fs_file = File::new(&file_path, 123456789);
         fs_file.set_remote_parent(PathBuf::from("/remote_parent"));
     
-        // Initialize the Nextcloud client
+        // initialize the Nextcloud client
         let nextcloud_client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
     
-        // Attempt to upload the file
+        // attempt to upload the file
         let result = nextcloud_client.upload_file(&fs_file);
     
-        // Assert that the upload was successful
+        // assert that the upload was successful
         assert!(result.is_ok());
     }
     
     #[test]
     fn test_upload_file_error() {
-        // Create a mock for the PUT request to simulate the Nextcloud server
+        // create a mock for the PUT request to simulate the Nextcloud server
         let mut mock = mockito::Server::new();
         let server_url = mock.url();
         mock
@@ -323,29 +324,29 @@ mod tests {
             .with_header("Content-Type", "application/xml")
             .create();
     
-        // Create a temporary directory and file to simulate a file upload
+        // create a temporary directory and file to simulate a file upload
         let temp_dir = tempdir().unwrap();
         let file_path = temp_dir.path().join("test_file.txt");
         let mut temp_file = StdFile::create(&file_path).unwrap();
         writeln!(temp_file, "This is a test file.").unwrap();
     
-        // Create a mock Nextcloud file struct
+        // create a mock Nextcloud file struct
         let mut fs_file = File::new(&file_path, 123456789);
         fs_file.set_remote_parent(PathBuf::from("/remote_parent"));
     
-        // Initialize the Nextcloud client
+        // initialize the Nextcloud client
         let nextcloud_client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
     
-        // Attempt to upload the file
+        // attempt to upload the file
         let result = nextcloud_client.upload_file(&fs_file);
     
-        // Assert that the upload failed with a 404 error
+        // assert that the upload failed with a 404 error
         assert!(result.is_err());
     }
     
     #[test]
     fn test_is_online_true() {
-        // Create a mock for the GET request to simulate the Nextcloud server
+        // create a mock for the GET request to simulate the Nextcloud server
         let mut mock = mockito::Server::new();
         let server_url = mock.url();
         mock
@@ -353,10 +354,13 @@ mod tests {
             .with_status(200)
             .with_header("Content-Type", "application/xml")
             .create();
-    
+        
+        // create a Nextcloud client
         let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
-    
+        
+        // attempt to check if the Nextcloud server is online
         if let Ok(is_online) = client.is_online() {
+            // assert that Nextcloud is online
             assert!(is_online);
         } else {
             panic!()
@@ -366,7 +370,7 @@ mod tests {
     
     #[test]
     fn test_is_online_false() {
-        // Create a mock for the GET request to simulate the Nextcloud server
+        // create a mock for the GET request to simulate the Nextcloud server
         let mut mock = mockito::Server::new();
         let server_url = mock.url();
         mock
@@ -375,9 +379,12 @@ mod tests {
             .with_header("Content-Type", "application/xml")
             .create();
     
+        // create a Nextcloud Client
         let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
-    
+        
+        // attempt to check if Nextcloud server is online
         if let Ok(is_online) = client.is_online() {
+            // assert that Nextcloud is offline
             assert_eq!(false, is_online);
         } else {
             panic!()
@@ -386,7 +393,7 @@ mod tests {
     
     #[test]
     fn test_authenticate_authorized() {
-        // Create a mock for the GET request to simulate the Nextcloud server
+        // create a mock for the GET request to simulate the Nextcloud server
         let mut mock = mockito::Server::new();
         let server_url = mock.url();
         mock
@@ -394,10 +401,12 @@ mod tests {
             .with_status(200)
             .with_header("Content-Type", "application/xml")
             .create();
-    
+        
+        // create a Nextcloud client
         let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
     
         if let Ok(logged_in) = client.authenticate() {
+            // assert that the credetials are valid
             assert!(logged_in);
         } else {
             panic!()
@@ -406,7 +415,7 @@ mod tests {
     
     #[test]
     fn test_authenticate_unauthorized() {
-        // Create a mock for the GET request to simulate the Nextcloud server
+        // create a mock for the GET request to simulate the Nextcloud server
         let mut mock = mockito::Server::new();
         let server_url = mock.url();
         mock
@@ -414,13 +423,269 @@ mod tests {
             .with_status(401)
             .with_header("Content-Type", "application/xml")
             .create();
-    
+        
+        // create a Nextcloud client
         let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
-    
+        
+        // attempt to authenticate with the clients credentials
         if let Ok(logged_in) = client.authenticate() {
+            // assert that the credentials are invalid
             assert_eq!(false, logged_in);
         } else {
             panic!()
+        }
+    }
+
+    #[test]
+    fn test_authenticate_error() {
+        // create a mock for the GET request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+        mock
+            .mock("GET", "/remote.php/dav/files/testuser")
+            .with_status(503)
+            .with_header("Content-Type", "application/xml")
+            .create();
+        
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to authenticate with the clients credentials
+        if let Err(_e) = client.authenticate() {
+            // assert that the server went offline during the authentication attempt
+            assert!(true)
+        } else {
+            panic!()
+        }
+    }
+    
+    #[test]
+    fn test_create_folder_success() {
+        // create a mock for the MKCOL request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+        mock
+            .mock("MKCOL", "/remote.php/dav/files/testuser/Test")
+            .with_status(201)
+            .with_header("Content-Type", "application/xml")
+            .create();
+
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to create a new folder on Nextcloud
+        match client.create_folder(Path::new("/Test")) {
+            // assert that the folder was successfully created
+            Ok(_) => assert!(true),
+            Err(e) => panic!("{}", e)
+        }
+    }
+
+    #[test]
+    fn test_create_folder_error() {
+        // create a mock for the MKCOL request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+        mock
+            .mock("MKCOL", "/remote.php/dav/files/testuser/Test")
+            .with_status(503)
+            .with_header("Content-Type", "application/xml")
+            .create();
+        
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to create a new folder on Nextcloud
+        match client.create_folder(Path::new("/Test")) {
+            Ok(_) => panic!(),
+            // assert that the Nextcloud server went offline during the creation attempt
+            Err(_e) => assert!(true)
+        }
+    }
+
+    #[test]
+    fn test_exists_folder_true() {
+        // create a mock for the MKCOL request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+        mock
+            .mock("PROPFIND", "/remote.php/dav/files/testuser/Test")
+            .with_status(207)
+            .with_header("Content-Type", "application/xml")
+            .create();
+
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to check if a folder exists on the Nextcloud server
+        match client.exists_folder(Path::new("/Test")) {
+            // assert that the folder exists
+            Ok(val) => assert!(val),
+            Err(e) => panic!("{}", e)
+        }
+    }
+
+    #[test]
+    fn test_exists_folder_false() {
+        // create a mock for the MKCOL request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+        mock
+            .mock("PROPFIND", "/remote.php/dav/files/testuser/Test")
+            .with_status(404)
+            .with_header("Content-Type", "application/xml")
+            .create();
+
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to check if a folder exists on the Nextcloud server
+        match client.exists_folder(Path::new("/Test")) {
+            // assert that the folder does not exit
+            Ok(val) => assert_eq!(false, val),
+            Err(e) => panic!("{}", e)
+        }
+    }
+
+    #[test]
+    fn test_exists_folder_error() {
+        // create a mock for the MKCOL request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+        mock
+            .mock("PROPFIND", "/remote.php/dav/files/testuser/Test")
+            .with_status(503)
+            .with_header("Content-Type", "application/xml")
+            .create();
+
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to check if a folder exists on the Nextcloud server
+        match client.exists_folder(Path::new("/Test")) {
+            Ok(_val) => panic!(),
+            // assert that Nextcloud went offline during the attempt
+            Err(_e) => assert!(true)
+        }
+    }
+
+    #[test]
+    fn test_ls_success() {
+        // create a mock for the GET request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+
+        // possible response from Nextcloud server 
+        let body = r#"<?xml version="1.0"?>
+            <d:multistatus
+                xmlns:d="DAV:"
+                xmlns:s="http://sabredav.org/ns"
+                xmlns:oc="http://owncloud.org/ns"
+                xmlns:nc="http://nextcloud.org/ns">
+                <d:response>
+                    <d:href>/remote.php/dav/files/testuser/Test/</d:href>
+                    <d:propstat>
+                        <d:prop>
+                            <d:displayname>Test</d:displayname>
+                            <d:resourcetype>
+                                <d:collection/>
+                            </d:resourcetype>
+                        </d:prop>
+                        <d:status>HTTP/1.1 200 OK</d:status>
+                    </d:propstat>
+                </d:response>
+                <d:response>
+                    <d:href>/remote.php/dav/files/testuser/Test/LB/</d:href>
+                    <d:propstat>
+                        <d:prop>
+                            <d:displayname>test_folder_1</d:displayname>
+                            <d:resourcetype>
+                                <d:collection/>
+                            </d:resourcetype>
+                        </d:prop>
+                        <d:status>HTTP/1.1 200 OK</d:status>
+                    </d:propstat>
+                </d:response>
+                <d:response>
+                    <d:href>/remote.php/dav/files/testuser/Test/LBU/</d:href>
+                    <d:propstat>
+                        <d:prop>
+                            <d:displayname>test_folder_2</d:displayname>
+                            <d:resourcetype>
+                                <d:collection/>
+                            </d:resourcetype>
+                        </d:prop>
+                        <d:status>HTTP/1.1 200 OK</d:status>
+                    </d:propstat>
+                </d:response>
+                <d:response>
+                    <d:href>/remote.php/dav/files/testuser/Test/Neue%20Textdatei.md</d:href>
+                    <d:propstat>
+                        <d:prop>
+                            <d:displayname>Neue Textdatei.md</d:displayname>
+                            <d:resourcetype/>
+                        </d:prop>
+                        <d:status>HTTP/1.1 200 OK</d:status>
+                    </d:propstat>
+                </d:response>
+            </d:multistatus>
+        "#;
+        mock
+            .mock("PROPFIND", "/remote.php/dav/files/testuser/Test")
+            .with_status(207)
+            .with_header("Content-Type", "application/xml")
+            .with_body(body)
+            .create();
+
+        // create vec of files to test the returned value against it
+        let test_files = vec![
+            PathBuf::from("test_folder_1"), 
+            PathBuf::from("test_folder_2"),
+            ];
+
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to list the items of a folder on Nextcloud
+        match client.ls(Path::new("/Test")) {
+            // assert that the listing returned the same paths like the predefined paths in 'test_files'
+            Ok(files) => {
+                assert_eq!(files, test_files)
+            }
+            Err(e) => panic!("{}", e)
+        }
+    }
+
+    #[test]
+    fn test_ls_error() {
+        // create a mock for the GET request to simulate the Nextcloud server
+        let mut mock = mockito::Server::new();
+        let server_url = mock.url();
+
+        // possible error response from Nextcloud server 
+        let body = r#"<?xml version="1.0" encoding="utf-8"?>
+            <d:error
+                xmlns:d="DAV:"
+                xmlns:s="http://sabredav.org/ns">
+                <s:exception>Sabre\DAV\Exception\NotFound</s:exception>
+                <s:message>File with name //Test1 could not be located</s:message>
+            </d:error>
+        "#;
+        mock
+            .mock("PROPFIND", "/remote.php/dav/files/testuser/Test")
+            .with_status(404)
+            .with_header("Content-Type", "application/xml")
+            .with_body(body)
+            .create();
+
+        // create a Nextcloud client
+        let client = NextcloudClient::new(server_url, "testuser".to_string(), "password".to_string());
+        
+        // attempt to list the items of a folder on Nextcloud
+        match client.ls(Path::new("/Test1")) {
+            Ok(_files) => panic!(),
+            // assert that the folder could not be found
+            Err(_e) => assert!(true)
         }
     }
 }
