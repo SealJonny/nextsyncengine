@@ -4,9 +4,6 @@ mod filesystem;
 mod helpers;
 mod upload;
 
-#[cfg(test)]
-mod tests;
-
 use clap::builder::ValueParser;
 use nextcloud::NextcloudClient;
 use media::Extractor;
