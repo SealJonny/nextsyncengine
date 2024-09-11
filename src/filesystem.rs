@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::media::get_metadata;
 
+#[derive(Debug)]
 pub struct Folder{
     name: String,
     sub_folders: Vec<Folder>
@@ -133,6 +134,25 @@ impl Folder {
     }
 }
 
+impl PartialEq for Folder {
+    fn eq(&self, other: &Self) -> bool {
+        // check for equality by comparing names and numbers of sub folders
+        if self.sub_folders.len() != other.sub_folders.len() || self.name != other.name {
+            return false
+        }
+
+        // compare each pair of sub folders to ensure equality for the complete structure
+        for (index, sub_self) in self.sub_folders.iter().enumerate() {
+            if let Some(sub_other) = other.sub_folders.get(index) {
+                if sub_self.eq(sub_other) == false {
+                    return false
+                }
+            }
+        }
+        true
+    }
+}
+
 #[derive(Clone)]
 pub struct File {
     local_path: PathBuf,
@@ -175,4 +195,74 @@ impl File {
         self.mtime
     }
     
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add_sub_folder() {
+        // create a object of the Folder struct manually
+        let mut root_manual = Folder::new("root".to_string());
+        root_manual.sub_folders.push(Folder::new("sub_1".to_string()));
+
+        if let Some(sub_1) = root_manual.get_subfolder_mut("sub_1".to_string()) {
+            sub_1.sub_folders.push(Folder::new("sub_sub_1".to_string()));
+            sub_1.sub_folders.push(Folder::new("sub_sub_2".to_string()));
+
+            if let Some(sub_sub_2) = sub_1.get_subfolder_mut("sub_sub_2".to_string()) {
+                sub_sub_2.sub_folders.push(Folder::new("sub_sub_sub_1".to_string()));
+            } 
+        }
+
+        // create a object of the Folder struct with the 'add_sub_folder' method
+        let mut root_auto = Folder::new("root".to_string());
+        root_auto.add_sub_folder(Folder::new("sub_1".to_string()), Path::new("root"));
+        root_auto.add_sub_folder(Folder::new("sub_sub_1".to_string()), Path::new("root/sub_1"));
+        root_auto.add_sub_folder(Folder::new("sub_sub_2".to_string()), Path::new("root/sub_1"));
+        root_auto.add_sub_folder(Folder::new("sub_sub_sub_1".to_string()), Path::new("root/sub_1/sub_sub_2"));
+
+        // assert that both objects are equal
+        assert_eq!(root_manual, root_auto)
+    }
+
+    #[test]
+    fn test_has_subfolder_exists_match() {
+        // create two equal objects of the Folder struct
+        let mut root = Folder::new("root".to_string());
+        root.add_sub_folder(Folder::new("sub_1".to_string()), Path::new("root"));
+        root.add_sub_folder(Folder::new("sub_2".to_string()), Path::new("root"));
+        root.add_sub_folder(Folder::new("sub_sub_1".to_string()), Path::new("root/sub_1"));
+        root.add_sub_folder(Folder::new("sub_sub_2".to_string()), Path::new("root/sub_1"));
+
+        assert!(root.has_subfolder(Path::new("root/sub_1/sub_sub_2")))
+    }
+
+    #[test]
+    fn test_has_subfolder_non_existent() {
+        // create an object of the Folder struct
+        let mut root = Folder::new("root".to_string());
+        root.add_sub_folder(Folder::new("sub_1".to_string()), Path::new("root"));
+        root.add_sub_folder(Folder::new("sub_2".to_string()), Path::new("root"));
+        root.add_sub_folder(Folder::new("sub_sub_1".to_string()), Path::new("root/sub_1"));
+        root.add_sub_folder(Folder::new("sub_sub_2".to_string()), Path::new("root/sub_1"));
+
+        // assert that root does not have a sub folder 'sub_sub_4'
+        assert_eq!(false, root.has_subfolder(Path::new("root/sub_1/sub_sub_4")))
+    }
+
+    #[test]
+    fn test_has_subfolder_exists_no_match() {
+        // create an object of the Folder struct
+        let mut root = Folder::new("root".to_string());
+        root.add_sub_folder(Folder::new("sub_1".to_string()), Path::new("root"));
+        root.add_sub_folder(Folder::new("sub_2".to_string()), Path::new("root"));
+        root.add_sub_folder(Folder::new("sub_sub_1".to_string()), Path::new("root/sub_1"));
+        root.add_sub_folder(Folder::new("sub_sub_2".to_string()), Path::new("root/sub_1"));
+
+        // assert that root does have a sub folder 'sub_sub_1' but not at 'root/sub_2/sub_sub_1'
+        assert_eq!(false, root.has_subfolder(Path::new("root/sub_2/sub_sub_1")))
+    }
+
 }
