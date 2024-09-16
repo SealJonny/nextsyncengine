@@ -75,7 +75,11 @@ fn main() {
     let exiftool = get_env_var("EXIFTOOL");
 
     let client = NextcloudClient::new(server_url, username.clone(), password);
-    let extractor = Extractor::new(exiftool);
+    let mut extractor = Extractor::new(exiftool);
+    if let Err(e) = extractor.get_supported_formats() {
+        error!("{}", e);
+        panic!()
+    }
 
     // common args between upload:sorted and upload:unsorted
     let local_arg =
