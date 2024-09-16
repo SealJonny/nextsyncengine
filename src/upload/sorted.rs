@@ -97,10 +97,12 @@ pub fn upload_sorted(path_upload: String, from_folder: bool, remote_path: String
     }
 
     // create the cached version of the nextcloud folder structure
+    print!("{}", "Scanning remote folder structure ... ".green());
     let mut root = Folder::new(remote_path.to_owned());
     if let Err(e)= travel_dir_dav(&mut root, &client) {
         return Err(e)
     }
+    println!("{}", "done".green());
 
     print!("{}", "Scanning local folder for files ... ".green());
     // creating the missing folders on nextcloud and uploading the files in 4 threads to nextcloud

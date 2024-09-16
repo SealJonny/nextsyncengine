@@ -32,7 +32,6 @@ impl Extractor {
                 .map(|val| val.to_lowercase())
                 .collect();
         self.supported_formats.append(&mut result);
-        
         Ok(())
     }
 
@@ -76,21 +75,31 @@ impl Extractor {
     // extracts the modification date using the exiftool binary
     fn extract_date_time_exif(&self, path: &Path) -> Result<i64, Box<dyn std::error::Error>> {
         // converting the extracted date time string into a unix timestamp
-        let path_str: &str;
+        let path_str: String;
         if let Some(tmp) = path.to_str() {
-            path_str = tmp
+            path_str = tmp.to_string();
         } else {
             return Err(Box::new(io::Error::new(io::ErrorKind::InvalidData, "Failed to extract exif metadata due to a conversion error")))
         }
 
         #[cfg(unix)]
-        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}' | head -n 1", &self.exiftool, path_str);
+        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}'", &self.exiftool, path_str);
 
         #[cfg(windows)]
-        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}' | Select-Object -First 1", &self.exiftool, path_str);
-        
-        // attempt to convert result to a datetime object
+        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}'", &self.exiftool, path_str);
+
+        // extract the date time from the file using exiftool
         let result = self.execute_shell_command(cmd)?;
+        let result = result.replace("\r\n", "\n");
+
+        // only use the first found time by exiftool
+        let mut times = result
+        .split("\n") 
+        .map(|val| val.to_string())
+        .collect::<Vec<String>>();
+        let result = times.swap_remove(0);
+
+        // attempt to convert result to a datetime object
         let format = "%Y:%m:%d %H:%M:%S";
         match NaiveDateTime::parse_from_str(&result, format) {
             Ok(mtime) => Ok(mtime.and_utc().timestamp()),
@@ -120,10 +129,15 @@ impl Extractor {
         let stderr = String::from_utf8_lossy(&output.stderr).trim_end().to_string();
 
         // return stdout if shell terminated successfully, otherwise return stderr
-        if output.status.success() {
+        if !stdout.is_empty() && output.status.success() {
             Ok(stdout)
         } else {
-            Err(Box::new(io::Error::new(io::ErrorKind::Other, stderr)))
+            Err(Box::new(io::Error::new(
+                io::ErrorKind::Other, 
+                format!("Failed to extract metadata with exiftool: Exit Code {}, {}", output.status.code().unwrap(), stderr)
+                    )
+                )
+            )
         }
     }
 
@@ -180,29 +194,29 @@ pub fn get_metadata(path: &str) -> Result<CustomMetadata, Box<dyn Error>> {
     Ok(CustomMetadata::new(mtime, size))
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use core::panic;
+#[cfg(test)]
+ mod tests {
+     use core::panic;
 
-//     use super::*;
+     use super::*;
 
-//     #[test]
-//     fn test_get_supported_formats() {
-//         let mut extractor = Extractor::new("/usr/local/bin/exiftool-amd64-glibc".to_string());
-//         match extractor.get_supported_formats() {
-//             Ok(_val) => {
-//                 println!("{:?}", extractor.supported_formats);
-//                 assert!(true)
-//             }
-//             Err(e) => panic!("{}", e)
-//         }
-//     }
+     #[test]
+     fn test_get_supported_formats() {
+         let mut extractor = Extractor::new("c:\\nextsyncengine\\exiftool.exe".to_string());
+         match extractor.get_supported_formats() {
+             Ok(_val) => {
+                 println!("{:?}", extractor.supported_formats);
+                 assert!(true)
+            }
+             Err(e) => panic!("{}", e)
+         }
+     }
 
-//     #[test]
-//     fn test_is_supported_exif() {
-//         let mut extractor = Extractor::new("/usr/local/bin/exiftool-amd64-glibc".to_string());
-//         let _ = extractor.get_supported_formats();
-//         assert!(extractor.is_supported_by_exif(Path::new("hallo.gag")))
+     #[test]
+     fn test_is_supported_exif() {
+         let mut extractor = Extractor::new("c:\\nextsyncengine\\exiftool.exe".to_string());
+         let _ = extractor.get_supported_formats();
+         assert!(extractor.is_supported_by_exif(Path::new("hallo.jpg")))
 
-//     }
-// }
+     }
+}
