@@ -17,6 +17,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: "x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu"
+      
+      # Install mingw-w64 for cross-compilation to Windows
+      - name: Install mingw-w64
+        run: sudo apt-get install -y mingw-w64
 
       # Build for Linux
       - name: Build for Linux
@@ -24,8 +28,8 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: nextsyncengine
-          path: target/release/nextsyncengine
+          name: nextsyncengine_linux
+          path: target/x86_64-unknown-linux-gnu/release/nextsyncengine
 
       # Build for Windows
       - name: Build for Windows
@@ -33,5 +37,5 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: nextsyncengine
+          name: nextsyncengine_windows
           path: target/x86_64-pc-windows-gnu/release/nextsyncengine.exe
