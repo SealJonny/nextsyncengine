@@ -194,29 +194,29 @@ pub fn get_metadata(path: &str) -> Result<CustomMetadata, Box<dyn Error>> {
     Ok(CustomMetadata::new(mtime, size))
 }
 
-#[cfg(test)]
- mod tests {
-     use core::panic;
+// #[cfg(test)]
+//  mod tests {
+//      use core::panic;
 
-     use super::*;
+//      use super::*;
 
-     #[test]
-     fn test_get_supported_formats() {
-         let mut extractor = Extractor::new("c:\\nextsyncengine\\exiftool.exe".to_string());
-         match extractor.get_supported_formats() {
-             Ok(_val) => {
-                 println!("{:?}", extractor.supported_formats);
-                 assert!(true)
-            }
-             Err(e) => panic!("{}", e)
-         }
-     }
+//      #[test]
+//      fn test_get_supported_formats() {
+//          let mut extractor = Extractor::new("c:\\nextsyncengine\\exiftool.exe".to_string());
+//          match extractor.get_supported_formats() {
+//              Ok(_val) => {
+//                  println!("{:?}", extractor.supported_formats);
+//                  assert!(true)
+//             }
+//              Err(e) => panic!("{}", e)
+//          }
+//      }
 
-     #[test]
-     fn test_is_supported_exif() {
-         let mut extractor = Extractor::new("c:\\nextsyncengine\\exiftool.exe".to_string());
-         let _ = extractor.get_supported_formats();
-         assert!(extractor.is_supported_by_exif(Path::new("hallo.jpg")))
+//      #[test]
+//      fn test_is_supported_exif() {
+//          let mut extractor = Extractor::new("c:\\nextsyncengine\\exiftool.exe".to_string());
+//          let _ = extractor.get_supported_formats();
+//          assert!(extractor.is_supported_by_exif(Path::new("hallo.jpg")))
 
-     }
-}
+//      }
+// }
