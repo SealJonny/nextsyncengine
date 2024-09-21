@@ -83,10 +83,10 @@ impl Extractor {
         }
 
         #[cfg(unix)]
-        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}'", &self.exiftool, path_str);
+        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate \"{}\"", &self.exiftool, path_str);
 
         #[cfg(windows)]
-        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate '{}'", &self.exiftool, path_str);
+        let cmd = format!("{} -m -s3 -d '%Y:%m:%d %H:%M:%S' -DateTime -ModifyDate -FileModifyDate \"{}\"", &self.exiftool, path_str);
 
         // extract the date time from the file using exiftool
         let result = self.execute_shell_command(cmd)?;
@@ -97,13 +97,18 @@ impl Extractor {
         .split("\n") 
         .map(|val| val.to_string())
         .collect::<Vec<String>>();
-        let result = times.swap_remove(0);
+        let mut result = times.swap_remove(0);
+
+        // use the next extracted date time if the current date time is useless
+        while result == "0000:00:00 00:00:00" && !times.is_empty() {
+            result = times.swap_remove(0);
+        }
 
         // attempt to convert result to a datetime object
         let format = "%Y:%m:%d %H:%M:%S";
         match NaiveDateTime::parse_from_str(&result, format) {
             Ok(mtime) => Ok(mtime.and_utc().timestamp()),
-            Err(_e) => Err(Box::new(io::Error::new(io::ErrorKind::Other, format!("Failed to convert {} to a date time", result))))
+            Err(_e) => Err(Box::new(io::Error::new(io::ErrorKind::Other, format!("Failed to convert {} to a date time, {}", result, path_str))))
         }
     }
 
@@ -133,8 +138,8 @@ impl Extractor {
             Ok(stdout)
         } else {
             Err(Box::new(io::Error::new(
-                io::ErrorKind::Other, 
-                format!("Failed to extract metadata with exiftool: Exit Code {}, {}", output.status.code().unwrap(), stderr)
+                io::ErrorKind::Other,
+                format!("Failed to extract metadata with exiftool: Exit Code {}, CMD: {}, {}", output.status.code().unwrap(), stderr, cmd)
                     )
                 )
             )
