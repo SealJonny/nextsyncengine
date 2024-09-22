@@ -110,7 +110,7 @@ pub fn upload_sorted(path_upload: String, from_folder: bool, remote_path: String
         Ok(mut files) => {
             println!("{}", "done".green());
             
-            print!("{}", "Creating the folder structure on Nextcloud ... ".green());
+            print!("{}", "Creating folder structure on Nextcloud ... ".green());
             get_remote_parent(&mut files, root, &client, &depth)?;
             println!("{}", "done".green());
 
