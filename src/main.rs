@@ -58,6 +58,7 @@ fn main() {
 
     let config_folder = exe_path.join("_nextsyncengine_");
     init_logger(&config_folder);
+
     let path = config_folder.join(".env");
     dotenv::from_path(path).expect("Failed to read .env file");
 
@@ -78,6 +79,7 @@ fn main() {
     let mut extractor = Extractor::new(exiftool);
     if let Err(e) = extractor.get_supported_formats() {
         error!("{}", e);
+        log::logger().flush();
         panic!()
     }
 
@@ -245,4 +247,6 @@ fn main() {
             return
         }
     }
+
+    log::logger().flush();
 }
