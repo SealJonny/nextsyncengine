@@ -53,7 +53,7 @@ EXIFTOOL=/path/to/exiftool/binary
 ```
 
 ### 🔧 Installation
-Either download the pre compiled binary from the latest release at https://github.com/SealJonny/nextsyncengine/releases/latest or compile the binary yourself:
+Either download the binary from the latest release at https://github.com/SealJonny/nextsyncengine/releases/latest or compile it yourself:
 ```bash
 git clone https://github.com/SealJonny/nextsyncengine.git
 cd nextsyncengine
