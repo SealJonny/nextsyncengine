@@ -38,7 +38,7 @@ NextSyncEngine is a Rust-based CLI tool designed to streamline file uploads from
 
 - **Unsorted Upload Option**: Alternatively, upload files in an unsorted manner, where files are uploaded directly to the specified folder without any directory restructuring.
 
-- **Fall Back Upload**: In the event that one or more files fail to upload, you will be prompted to retry the upload process for the affected files. Should a critical error occur during the upload, the batch process will terminate, and the local paths of any remaining files will be recorded in a log file: `~/nextsyncengine_failed-uploads.txt` on Linux or `C:\Users\{username}\nextsyncengine_failed-uploads.txt` on Windows. This log can be used to retry uploads at a later time, for example, when the server is no longer in maintenance mode (have a look at the Usage doc).
+- **Fall Back Upload**: In the event that one or more files fail to upload, you will be prompted to retry the upload process for the affected files. Should a critical error occur during the upload, the batch process will terminate, and the local paths of any remaining files will be recorded in a log file: `~/nextsyncengine_failed-uploads.txt` on Linux or `C:\Users\{username}\nextsyncengine_failed-uploads.txt` on Windows. This log can be used to retry uploads at a later time, for example, when the server is no longer in maintenance mode.
 
 - **Error Logging**: Detailed logging of any errors or warnings during execution is available in `process.log`, making it easier to troubleshoot issues.
 
